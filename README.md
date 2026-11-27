@@ -61,6 +61,7 @@ Abliefern geht von selbst: in den gelben Kreis am Trichter (oder an einem Außen
 - **Automatisieren:** Sammel-Eichhörnchen (beliebig viele, mit Halstuch), vier Außenposten mit Förderbändern zum Silo, Nussrutsche, Walzenknacker, Lagerhalle, Katze Mimi, Sieb, Glasdeckel, Rohrpost.
 - **Opas Notizbuch:** Skillbaum mit über 200 Knoten in sieben Pfaden (Sammeln, Tragen, Handel, Knacken, Maschinen, Helfer, Glück) und 21 Schlüssel-Talenten. Verschieben, zoomen, anklicken.
 - **Bestellungen** von Eisdiele, Bäckerei und Co., Meilensteine mit Münzen, geführter Einstieg mit 7 Zielen.
+- **Das Tal Haselgrund:** Gelände mit Hügeln, Bach und Wasserfall, Wald, Wege, zwei Brücken. Opas Anwesen mit Veranda, Garten, Gewächshaus, Brunnen, Hühnerstall, Holzlager, Feuerstelle, Hoftor und Briefkasten; in der Werkstatt Opas Fotos, sein Bauplan und eine Maschine unter einer Plane.
 - **Optik:** prozedurale Shader für Holz, Putz, Nussschalen, Kerne und Gras, dazu Bäume, Büsche, Steine und Pilze aus freien Modell-Paketen (siehe unten). Warmes Herbstlicht.
 - **Ton:** knapp 40 erzeugte Geräusche plus aufgenommene Schritte und Aufpralle (Kenney), Musikschleife, Vogelgezwitscher.
 - **Speichern** automatisch alle 30 Sekunden und beim Beenden, der Berg samt Löchern wird mitgespeichert.

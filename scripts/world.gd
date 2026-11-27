@@ -234,6 +234,7 @@ func _hof_und_berg() -> void:
 		if Game.genommen > 0:
 			berg.an_rest_anpassen(Game.berg_rest())
 	add_child(berg)
+	_anwesen(hof)
 	_grashalme(hof)
 	_hof_ausstatten(hof)
 	# Schild mit dem Zählerstand am Weg zum Berg
@@ -251,11 +252,9 @@ func _hof_und_berg() -> void:
 ## Kleinkram am Silo. Der Bewuchs des Tals kommt aus wald.gd, die Orte aus dem Weltplan.
 func _hof_ausstatten(hof: Node3D) -> void:
 	# Holzlager und Fässer neben dem Silo
-	Modelle.setze(hof, "rohstoffe/Wood_Log_Stack.gltf", Vector3(-3.6, 0, -4.6), 90.0, 0.9)
 	Modelle.setze(hof, "rohstoffe/Pallet_Wood.gltf", Vector3(1.2, 0, -4.5), 8.0, 0.8)
 	Modelle.setze(hof, "kueche/bag.glb", Vector3(1.0, 0.24, -4.4), 30.0, 1.5)
 	Modelle.setze(hof, "kueche/bag.glb", Vector3(1.45, 0.24, -4.65), -50.0, 1.4)
-	Modelle.setze(hof, "kueche/barrel.glb", Vector3(-3.4, 0, -6.6), 0.0, 1.2).rotation_degrees.x = 0.0
 	Modelle.setze(hof, "natur/log_stack.glb", Vector3(5.2, 0, -3.9), 90.0, 2.6)
 
 
@@ -297,6 +296,8 @@ func _grashalme(hof: Node3D) -> void:
 		if WeltPlan.tal_r(p.x, p.z) > 1.0:
 			continue
 		if absf(p.x - 3.5) < 7.2 and p.z > -3.4 and p.z < 3.4:
+			continue
+		if WeltPlan.bebaut(p.x, p.z, 0.1) and not (p.x < -7.5 and p.z > 8.0 and p.z < 17.0):
 			continue
 		if berg.hoehe_bei(p.x, p.z) > 0.02:
 			continue
@@ -350,6 +351,11 @@ func _kueche() -> void:
 	_wand(k, Vector3(TUER_X.y, 0, -3.1), Vector3(3.1, 3, -2.9), wand)
 	_wand(k, Vector3(TUER_X.x, 2.25, -3.1), Vector3(TUER_X.y, 3, -2.9), wand)
 	_haustuer(k)
+	# Kerben neben der Tür: Opa hat hier nicht die Enkel gemessen, sondern den Berg
+	for kerbe in [["1974", 0.3], ["1981", 0.72], ["1990", 1.2], ["2003", 1.68], ["2019", 2.05]]:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.07, 0.006, 0.004)), Bau.mat(Color(0.3, 0.2, 0.12)), Vector3(2.755, float(kerbe[1]), -2.897))
+		Bau.schrift(k, str(kerbe[0]), Vector3(2.835, float(kerbe[1]) + 0.012, -2.896), 26, Color(0.3, 0.2, 0.12))
+	Bau.schrift(k, "Berg", Vector3(2.8, 2.2, -2.896), 26, Color(0.3, 0.2, 0.12))
 	_wand(k, Vector3(FENSTER_X.x, 0, -3.1), Vector3(FENSTER_X.y, FENSTER_Y.x, -2.9), wand)
 	_wand(k, Vector3(FENSTER_X.x, FENSTER_Y.y, -3.1), Vector3(FENSTER_X.y, 3, -2.9), wand)
 	_fenster(k)
@@ -609,7 +615,7 @@ func _draussen(k: Node3D) -> void:
 	_abgaben.append({"pos": ABGABE_POS, "name": "Trichter", "ziel": SILO_POS + Vector3(0, 1.9, 0)})
 	# Bestellbrett (Laden) neben dem Silo
 	var brett := Node3D.new()
-	brett.position = Vector3(-2.75, 0, -4.2)
+	brett.position = Vector3(-2.95, 0, -5.4)
 	brett.rotation_degrees.y = 200
 	k.add_child(brett)
 	for x in [-0.55, 0.55]:
@@ -719,6 +725,204 @@ func _werkstatt() -> void:
 		var x := 5.5 + i * 0.4
 		Bau.teil(w, Bau.box_mesh(Vector3(0.04, 0.3, 0.03)), Look.metall(Color(0.5, 0.5, 0.55)), Vector3(x, 1.7, 2.84))
 	Bau.holzschild(w, "Maschinen gibt's am Telefon in der Küche", Vector3(6.5, 2.35, 2.86), Vector2(1.6, 0.18), Vector3(0, 180, 0), 50)
+	_werkstatt_einrichten(w)
+
+
+# =============================================================================
+# Opas Anwesen (Etappe 2 des Weltplans)
+# =============================================================================
+const BRIEF_GEMEINDE := """Gemeinde Haselgrund · Bauamt
+
+Sehr geehrter Herr Walter,
+
+Betreff: Ihr Nusshaufen (unser Schreiben Nr. 47)
+
+wir weisen erneut darauf hin, dass der Haufen auf Ihrem Grundstück inzwischen höher ist als das Rathaus. Eine Genehmigung liegt weiterhin nicht vor. Wir bitten um Abtragung bis spätestens Herbst 1998.
+
+Mit freundlichen Grüßen
+i. A. Krümel
+
+P. S.: Die Eichhörnchen haben schon wieder unseren Briefträger bestohlen."""
+
+const BAUPLAN_MOND := """Mondsiebmaschine, Entwurf 7
+
+Manche Nüsse kommen vom Mond. Ich bin mir sicher. Sie sind silbern und schmecken nach nichts.
+
+Die Maschine steht auf der Lichtung hinter dem Berg, da wo der graue Staub liegt. Erst sauber machen, dann einschalten!
+
+Merken: Wegweiser im alten Dorf neu streichen (Mond: 384.400 km).
+
+Am Rand, mit Bleistift: Nadel verloren. Irgendwo zwischen Heu und Abendrot."""
+
+
+func _anwesen(hof: Node3D) -> void:
+	var g := gelaende
+	var o := WeltPlan.ORTE
+	Modelle.platz(hof, "veranda", Vector3(2.0, 0.0, 4.3), 0.0, Ersatz.veranda)
+	Modelle.platz(hof, "brunnen", g.position(o.brunnen.x, o.brunnen.z), 25.0, Ersatz.brunnen)
+	Modelle.platz(hof, "huehnerstall", g.position(o.huehnerstall.x, o.huehnerstall.z), 0.0, Ersatz.huehnerstall)
+	Modelle.platz(hof, "holzlager", g.position(o.holzlager.x, o.holzlager.z), 0.0, Ersatz.holzlager)
+	# Feuerstelle; Opas Stuhl steht so, dass er über das Feuer genau auf die Kuppe schaut
+	var feuer := g.position(o.feuerstelle.x, o.feuerstelle.z)
+	Modelle.platz(hof, "feuerstelle", feuer, 0.0, Ersatz.feuerstelle)
+	var zur_kuppe := Vector3(Nussberg.MITTE.x - feuer.x, 0, Nussberg.MITTE.z - feuer.z).normalized()
+	var sitz := feuer - zur_kuppe * 1.9
+	Modelle.platz(hof, "opas_stuhl", g.position(sitz.x, sitz.z), rad_to_deg(atan2(zur_kuppe.x, zur_kuppe.z)), Ersatz.opas_stuhl)
+	# Hoftor, Zaun und Briefkasten
+	Modelle.platz(hof, "hoftor", g.position(1.7, 21.3), 0.0, Ersatz.hoftor)
+	_zaun(hof, Vector2(-14.2, 21.3), Vector2(-0.3, 21.3), 11, 1.0, [2])
+	_zaun(hof, Vector2(3.7, 21.3), Vector2(18.0, 21.3), 12, 1.0, [5])
+	var kasten := Modelle.platz(hof, "briefkasten", g.position(4.5, 22.4), -90.0, Ersatz.briefkasten)
+	Interaktiv.erzeuge(kasten, Vector3(0.6, 0.7, 0.7), Vector3(0, 1.15, 0), "Briefkasten: Post für Opa",
+		func(_s): _menue(menues.zeige_zettel.bind("Post für Opa", BRIEF_GEMEINDE)))
+	# Der Traktor hat den Kampf gegen den Berg verloren
+	var tp := g.position(o.traktor.x, o.traktor.z)
+	var traktor := Modelle.platz(hof, "traktor_kaputt", tp + Vector3(0, -0.12, 0),
+		rad_to_deg(atan2(Nussberg.MITTE.x - tp.x, Nussberg.MITTE.z - tp.z)), Ersatz.traktor)
+	traktor.rotation_degrees.x = 5.0
+	_garten(hof)
+
+
+func _zaun(hof: Node3D, von: Vector2, bis: Vector2, saat: int, hoehe := 1.0, luecken: Array = []) -> void:
+	var m := (von + bis) * 0.5
+	var k := Node3D.new()
+	k.name = "Zaun"
+	k.position = gelaende.position(m.x, m.y)
+	k.rotation.y = -atan2(bis.y - von.y, bis.x - von.x)
+	hof.add_child(k)
+	Ersatz.zaun(k, von.distance_to(bis), saat, hoehe, luecken)
+
+
+## Gemüsegarten mit vier Beeten, Gewächshaus, Vogelscheuche; daneben der Apfelbaum mit Opas Leiter.
+func _garten(hof: Node3D) -> void:
+	var g := gelaende
+	var x0 := -14.6
+	var x1 := -7.6
+	var z0 := 8.5
+	var z1 := 16.0
+	_zaun(hof, Vector2(x0, z0), Vector2(x1, z0), 21, 0.8)
+	_zaun(hof, Vector2(x0, z1), Vector2(x1, z1), 22, 0.8)
+	_zaun(hof, Vector2(x0, z0), Vector2(x0, z1), 23, 0.8)
+	_zaun(hof, Vector2(x1, z0), Vector2(x1, 11.5), 24, 0.8)
+	_zaun(hof, Vector2(x1, 13.0), Vector2(x1, z1), 25, 0.8)
+	Modelle.platz(hof, "gewaechshaus", g.position(-13.2, 12.25), 90.0, Ersatz.gewaechshaus)
+	Modelle.platz(hof, "vogelscheuche", g.position(-13.3, 9.5), 100.0, Ersatz.vogelscheuche)
+	var erde := Look.putz(Color(0.32, 0.23, 0.15), Color(0.24, 0.17, 0.11), 45.0, 0.0, 1.0)
+	var beete := [
+		[9.3, ["natur/crops_cornStageD.glb", "natur/crops_cornStageB.glb", "natur/crops_cornStageC.glb"], 1.05],
+		[10.6, ["natur/crop_carrot.glb", "natur/crop_turnip.glb"], 0.9],
+		[13.9, ["natur/crops_leafsStageB.glb", "natur/crops_leafsStageA.glb"], 1.0],
+		[15.2, ["natur/crops_wheatStageB.glb", "natur/crops_wheatStageA.glb"], 1.1],
+	]
+	var r := RandomNumberGenerator.new()
+	r.seed = 88
+	var lagen := {}
+	for beet in beete:
+		var z: float = beet[0]
+		var h := g.hoehe_bei(-9.8, z)
+		var b := Bau.teil(hof, Bau.box_mesh(Vector3(3.3, 0.16, 0.9)), erde, Vector3(-9.8, h + 0.05, z))
+		b.set_meta("ohne_rand", true)
+		var arten: Array = beet[1]
+		for i in 8:
+			if r.randf() < 0.1:
+				continue   # hier ist nichts aufgegangen
+			var pfad: String = arten[r.randi() % arten.size()]
+			if not lagen.has(pfad):
+				lagen[pfad] = []
+			lagen[pfad].append(Streuer.lage(Vector3(-11.2 + i * 0.4 + r.randf_range(-0.05, 0.05), h + 0.16, z + r.randf_range(-0.12, 0.12)), r.randf() * TAU, float(beet[2]) * r.randf_range(0.85, 1.15)))
+	# Kürbisse und Melonen an der Vogelscheuche
+	for i in 6:
+		var pfad2 := "natur/crop_pumpkin.glb" if i < 4 else "natur/crop_melon.glb"
+		if not lagen.has(pfad2):
+			lagen[pfad2] = []
+		var p := g.position(-13.6 + (i % 3) * 0.75 + r.randf_range(-0.15, 0.15), 10.3 - (i / 3) * 0.7 + r.randf_range(-0.1, 0.1))
+		lagen[pfad2].append(Streuer.lage(p + Vector3(0, 0.03, 0), r.randf() * TAU, r.randf_range(1.2, 1.8)))
+	for pfad3 in lagen:
+		Streuer.setzen(hof, pfad3, lagen[pfad3], {"schatten": false, "sicht": 70.0})
+	# Apfelbaum mit Leiter und Korb
+	var ap: Vector3 = WeltPlan.ORTE.apfelbaum
+	var baum_pos := g.position(ap.x, ap.z)
+	Modelle.setze(hof, "wald/Tree_3_B_Color1.gltf", baum_pos + Vector3(0, -0.15, 0), 40.0, 1.3)
+	var stamm := Node3D.new()
+	stamm.position = baum_pos
+	hof.add_child(stamm)
+	Ersatz._koll(stamm, Vector3(0.6, 3.0, 0.6), Vector3(0, 1.5, 0))
+	Modelle.platz(hof, "leiter_apfelbaum", baum_pos + Vector3(0.15, 0, 1.15), 0.0, Ersatz.leiter)
+
+
+# =============================================================================
+# Werkstatt-Einrichtung: Regal, Fotos, Bauplan, Opas Maschine unter der Plane
+# =============================================================================
+func _werkstatt_einrichten(w: Node3D) -> void:
+	Einrichtung.teppich(w, Vector3(6.3, 0, 0.3), Vector2(2.6, 1.7), Color(0.42, 0.3, 0.22), Color(0.6, 0.48, 0.3))
+	# Regal an der Ostwand mit Gläsern, Ölkannen und Ersatzteilen
+	var regal := Einrichtung.regal(w, Vector3(9.88, 0.5, 1.0), 1.7, 4, -90.0)
+	for i in 3:
+		Einrichtung.vorratsglas(regal, Vector3(-0.6 + i * 0.3, 0.02, 0.12), ["wal", "hasel", "mandel"][i], 0.5 + 0.2 * i, 0.18)
+	var kanne_rot := Look.lackiert(Color(0.6, 0.16, 0.12), 0.4)
+	var blech := Look.metall(Color(0.55, 0.56, 0.58), 0.4)
+	for kp in [Vector3(0.35, 0.42, 0.12), Vector3(0.62, 0.42, 0.13), Vector3(-0.3, 0.82, 0.12)]:
+		Bau.teil(regal, Bau.zylinder_mesh(0.055, 0.065, 0.13, 12), kanne_rot, kp + Vector3(0, 0.065, 0))
+		Bau.teil(regal, Bau.zylinder_mesh(0.006, 0.018, 0.14, 6), blech, kp + Vector3(0.06, 0.17, 0), Vector3(0, 0, -40))
+	Modelle.setze(regal, "rohstoffe/Parts_Cog.gltf", Vector3(0.3, 0.9, 0.12), 20.0, 0.45).rotation_degrees.x = 90.0
+	Modelle.setze(regal, "rohstoffe/Parts_Cog.gltf", Vector3(0.55, 0.86, 0.1), 0.0, 0.3).rotation_degrees.x = 90.0
+	Bau.teil(regal, Bau.box_mesh(Vector3(0.4, 0.2, 0.2)), Look.holz(Look.KIEFER, 8.0, 0.0), Vector3(-0.45, 1.31, 0.12))
+	Bau.schrift(regal, "Schrauben\n(krumm)", Vector3(-0.45, 1.31, 0.222), 22)
+	# Fotos an der Nordwand: 52 Jahre in vier Bildern
+	var rahmen := Look.holz(Look.NUSSBAUM, 8.0, 0.3)
+	var papier := Look.putz(Color(0.86, 0.78, 0.6), Color(0.78, 0.69, 0.5), 90.0, 0.0, 0.9)
+	var braun := Bau.mat(Color(0.36, 0.22, 0.12), 0.9)
+	var fotos := [["1974", 0.025], ["1983", 0.05], ["1997", 0.085], ["2019", 0.13]]
+	for i in fotos.size():
+		var fp := Vector3(3.75 + i * 0.56, 1.62 + (0.03 if i % 2 == 0 else -0.02), -2.89)
+		var foto := Node3D.new()
+		foto.position = fp
+		foto.rotation_degrees.z = [-2.0, 1.5, -1.0, 2.5][i]
+		w.add_child(foto)
+		Bau.teil(foto, Bau.box_mesh(Vector3(0.44, 0.38, 0.02)), rahmen)
+		Bau.teil(foto, Bau.box_mesh(Vector3(0.38, 0.32, 0.006)), papier, Vector3(0, 0, 0.01))
+		var gr: float = fotos[i][1]
+		Bau.teil(foto, Bau.box_mesh(Vector3(0.36, 0.004, 0.002)), braun, Vector3(0, -0.07, 0.014))
+		Bau.teil(foto, Bau.kugel_mesh(1.0, true, 14), braun, Vector3(-0.02, -0.07, 0.013), Vector3.ZERO, Vector3(gr * 1.5, gr, 0.004))
+		Bau.teil(foto, Bau.box_mesh(Vector3(0.012, 0.05, 0.002)), braun, Vector3(0.13, -0.045, 0.014))
+		Bau.teil(foto, Bau.kugel_mesh(0.012, false, 8), braun, Vector3(0.13, -0.012, 0.014), Vector3.ZERO, Vector3(1, 1, 0.2))
+		Bau.schrift(foto, str(fotos[i][0]), Vector3(0, -0.125, 0.0145), 24, Color(0.3, 0.2, 0.12))
+	# Aufgeschlagener Bauplan auf der Werkbank
+	var buch := Node3D.new()
+	buch.name = "Bauplan"
+	buch.position = Vector3(5.75, 0.905, 2.45)
+	buch.rotation_degrees.y = 168
+	w.add_child(buch)
+	for s in [-1.0, 1.0]:
+		Bau.teil(buch, Bau.box_mesh(Vector3(0.17, 0.014, 0.24)), Bau.mat(Color(0.92, 0.88, 0.76)), Vector3(s * 0.088, 0.008, 0), Vector3(0, 0, s * 5.0))
+	Bau.teil(buch, Bau.box_mesh(Vector3(0.37, 0.006, 0.26)), Look.stoff(Color(0.3, 0.16, 0.1)), Vector3(0, 0.0, 0))
+	Bau.teil(buch, Bau.zylinder_mesh(0.045, 0.045, 0.002, 14), Bau.mat(Color(0.25, 0.25, 0.3)), Vector3(0.09, 0.019, 0.0))
+	Bau.teil(buch, Bau.zylinder_mesh(0.004, 0.004, 0.15, 6), Bau.mat(Color(0.85, 0.7, 0.2)), Vector3(-0.2, 0.01, 0.05), Vector3(90, 30, 0))
+	Interaktiv.erzeuge(buch, Vector3(0.45, 0.2, 0.35), Vector3(0, 0.08, 0), "Opas Bauplan lesen",
+		func(_s): _menue(menues.zeige_zettel.bind("Opas Bauplan", BAUPLAN_MOND)))
+	# Werkzeug an der Lochwand
+	var griff := Look.holz(Look.EICHE, 9.0, 0.2)
+	Bau.teil(w, Bau.box_mesh(Vector3(0.42, 0.11, 0.008)), blech, Vector3(7.2, 1.95, 2.85), Vector3(0, 0, -8))
+	Bau.teil(w, Bau.box_mesh(Vector3(0.12, 0.13, 0.025)), griff, Vector3(7.46, 1.94, 2.845), Vector3(0, 0, -8))
+	Bau.teil(w, Bau.box_mesh(Vector3(0.03, 0.3, 0.03)), griff, Vector3(5.75, 1.92, 2.85))
+	Bau.teil(w, Bau.box_mesh(Vector3(0.13, 0.05, 0.05)), Look.metall(Color(0.35, 0.35, 0.38), 0.4), Vector3(5.75, 2.08, 2.85))
+	# Opas Maschine unter der Plane: nur ein Zahnrad schaut heraus
+	var plane := Node3D.new()
+	plane.name = "PlaneMaschine"
+	plane.position = Vector3(8.95, 0, 2.05)
+	w.add_child(plane)
+	var tuch := Look.stoff(Color(0.42, 0.46, 0.36))
+	Bau.teil(plane, Bau.kugel_mesh(1.0, true, 18), tuch, Vector3(0, 0, 0), Vector3.ZERO, Vector3(0.85, 1.25, 0.7))
+	Bau.teil(plane, Bau.kugel_mesh(1.0, true, 14), tuch, Vector3(-0.35, 0, 0.15), Vector3.ZERO, Vector3(0.6, 0.85, 0.6))
+	Bau.teil(plane, Bau.kugel_mesh(1.0, true, 14), tuch, Vector3(0.3, 0, -0.2), Vector3.ZERO, Vector3(0.55, 1.5, 0.5))
+	var rad := Modelle.setze(plane, "rohstoffe/Parts_Cog.gltf", Vector3(-0.78, 0.55, 0.1), 80.0, 2.3)
+	rad.rotation_degrees.z = 12.0
+	Bau.holzschild(plane, "NICHT ANFASSEN!", Vector3(-0.2, 0.5, -0.72), Vector2(0.62, 0.16), Vector3(-8, 180, 3), 56)
+	Ersatz._koll(plane, Vector3(1.9, 1.5, 1.5), Vector3(-0.1, 0.75, 0))
+	Interaktiv.erzeuge(plane, Vector3(1.9, 1.5, 1.5), Vector3(-0.15, 0.8, -0.1), "Unter die Plane schauen",
+		func(_s):
+			Sfx.spiele("fehler", -8.0)
+			Game.toast.emit("Die Plane ist festgezurrt. Darunter tickt etwas.", Game.FARBE_INFO))
 
 
 # =============================================================================
@@ -826,7 +1030,7 @@ func _maschine_aufstellen(id: String, neu := true) -> void:
 			add_child(lh)
 			Bau.block(lh, Vector3(2.2, 2.4, 1.8), SILO_POS + Vector3(-2.3, 1.2, 0.0), Look.holz(Look.ALTHOLZ, 9.0, 0.1))
 			Bau.teil(lh, Bau.box_mesh(Vector3(2.4, 0.12, 2.0)), Look.putz(Color(0.62, 0.24, 0.16), Color(0.5, 0.18, 0.12), 30.0, 0.35, 0.8), SILO_POS + Vector3(-2.3, 2.46, 0.0))
-			Bau.holzschild(lh, "LAGERHALLE", SILO_POS + Vector3(-2.3, 1.9, -0.92), Vector2(1.2, 0.22), Vector3(0, 180, 0), 80)
+			Bau.holzschild(lh, "LAGERHALLE", SILO_POS + Vector3(-2.3, 2.2, -0.92), Vector2(1.2, 0.22), Vector3(0, 180, 0), 80)
 			_maschinen[id] = lh
 
 

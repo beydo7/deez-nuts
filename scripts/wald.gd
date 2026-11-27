@@ -135,6 +135,8 @@ func _baumgruppen() -> void:
 					zu_nah = true
 			if zu_nah or gelaende.bach_abstand(p.x, p.y) < 3.0 or gelaende.weg_bei(p.x, p.y) > 0.3:
 				continue
+			if WeltPlan.bebaut(p.x, p.y, 2.5) or not _ist_frei(p, -2.0):
+				continue
 			gesetzt.append(p)
 			_baum(gelaende.position(p.x, p.y), g[3], _rng.randf_range(1.05, 1.45))
 
@@ -277,6 +279,8 @@ func _wiese_frei(x: float, z: float, rand: float) -> bool:
 	if x > -8.0 - rand and x < 13.0 + rand and z > -10.0 - rand and z < 8.0 + rand:
 		return false
 	if gelaende.bach_abstand(x, z) < 3.5 or gelaende.weg_bei(x, z) > 0.15:
+		return false
+	if WeltPlan.bebaut(x, z, rand):
 		return false
 	for po in Data.POSTEN:
 		if Vector2(x - po.pos.x, z - po.pos.z).length() < 5.0 + rand:

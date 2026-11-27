@@ -28,6 +28,7 @@ func _ready() -> void:
 	Game.erster_start = false
 	welt.spieler.gesperrt = false
 	await _tal()
+	await _anwesen()
 	await _berg_und_sammeln()
 	await _abliefern()
 	await _knacken()
@@ -89,6 +90,62 @@ func _tal() -> void:
 	Input.action_release("vor")
 	pruefe(WeltPlan.tal_r(s.global_position.x, s.global_position.z) < WeltPlan.GRENZE + 0.05, "Talgrenze hält den Spieler auf")
 	print("   Modellplätze: ", Modelle.plaetze)
+	s.global_position = Vector3(0.15, 0.05, -1.0)
+	await warte(0.3)
+
+
+func _anwesen() -> void:
+	print("-- Anwesen und Werkstatt")
+	var g: Gelaende = welt.gelaende
+	var raum: PhysicsDirectSpaceState3D = welt.get_world_3d().direct_space_state
+	for m in ["veranda", "brunnen", "huehnerstall", "holzlager", "feuerstelle", "opas_stuhl", "hoftor", "briefkasten", "traktor_kaputt", "gewaechshaus", "vogelscheuche", "leiter_apfelbaum"]:
+		var k: Node = welt.find_child(m, true, false)
+		pruefe(Modelle.plaetze.has(m) and k != null and k.get_child_count() > 0, "Modellplatz %s steht" % m)
+	# Opas Stuhl schaut auf die Kuppe
+	var stuhl: Node3D = welt.find_child("opas_stuhl", true, false)
+	var blick := stuhl.global_transform.basis.z
+	var soll := (Vector3(Nussberg.MITTE.x, 0, Nussberg.MITTE.z) - Vector3(stuhl.global_position.x, 0, stuhl.global_position.z)).normalized()
+	pruefe(blick.dot(soll) > 0.99, "Opas Stuhl zeigt auf die Kuppe")
+	# Der Hauptweg vom Hoftor bis zum Berg ist nicht verbaut
+	var weg: Array = WeltPlan.WEGE[0][0]
+	var frei := true
+	for i in range(3, weg.size() - 1):
+		for t in [0.0, 0.25, 0.5, 0.75]:
+			var p: Vector2 = (weg[i] as Vector2).lerp(weg[i + 1], t)
+			var q := PhysicsRayQueryParameters3D.create(Vector3(p.x, 2.2, p.y), Vector3(p.x, -2.0, p.y), Data.L_WELT)
+			var treffer: Dictionary = raum.intersect_ray(q)
+			if treffer.is_empty() or treffer.position.y > g.hoehe_bei(p.x, p.y) + 0.3:
+				frei = false
+				print("     verbaut bei ", p)
+	pruefe(frei, "Hauptweg vom Hoftor zum Berg ist frei")
+	# Abgabekreis und Bestellbrett sind nicht zugestellt
+	var q2 := PhysicsRayQueryParameters3D.create(welt.ABGABE_POS + Vector3(0, 2.0, 0), welt.ABGABE_POS + Vector3(0, -1.0, 0), Data.L_WELT)
+	var t2: Dictionary = raum.intersect_ray(q2)
+	pruefe(not t2.is_empty() and t2.position.y < 0.2, "Abgabekreis ist frei")
+	# Veranda ist über die Treppe begehbar
+	var s: Spieler = welt.spieler
+	s.global_position = Vector3(3.25, 0.1, 7.4)
+	s.rotation.y = 0.0
+	Input.action_press("vor")
+	await warte(1.4)
+	Input.action_release("vor")
+	pruefe(s.global_position.z < 5.4 and s.global_position.y > 0.15, "Veranda über die Treppe erreichbar (y %.2f)" % s.global_position.y)
+	# Briefkasten und Bauplan lassen sich lesen
+	for name in ["briefkasten", "Bauplan"]:
+		var knoten: Node = welt.find_child(name, true, false)
+		var ia: Interaktiv = null
+		for c in knoten.get_children():
+			if c is Interaktiv:
+				ia = c
+		pruefe(ia != null, "%s ist benutzbar" % name)
+		if ia:
+			ia.aktion.call(s)
+			await warte(0.2)
+			pruefe(welt.menues.offen == "zettel", "%s öffnet einen Zettel" % name)
+			welt.menues.schliessen()
+			await warte(0.1)
+	pruefe(welt.find_child("PlaneMaschine", true, false) != null, "Opas Maschine unter der Plane steht in der Werkstatt")
+	s.gesperrt = false
 	s.global_position = Vector3(0.15, 0.05, -1.0)
 	await warte(0.3)
 

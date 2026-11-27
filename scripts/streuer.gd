@@ -49,6 +49,8 @@ static func setzen(eltern: Node3D, pfad: String, lagen: Array, optionen := {}) -
 	var sicht: float = optionen.get("sicht", 0.0)
 	for teil in teile(pfad):
 		var mesh: Mesh = teil[0]
+		if pfad.begins_with("natur/"):
+			mesh = Modelle.mit_blattgruen(mesh)
 		var lokal: Transform3D = teil[1]
 		var mat: Material = null
 		if herbst:

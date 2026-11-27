@@ -13,7 +13,11 @@ static var plaetze := {}
 
 static func neu(pfad: String) -> Node3D:
 	var s: PackedScene = load("res://assets/" + pfad)
-	return s.instantiate() as Node3D
+	var n := s.instantiate() as Node3D
+	if pfad.begins_with("natur/"):
+		for mi in n.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).mesh = mit_blattgruen((mi as MeshInstance3D).mesh)
+	return n
 
 
 ## Setzt ein Modell an eine Stelle. drehung in Grad um Y, skala gleichmäßig.
@@ -58,6 +62,27 @@ static func herbst_material(alt: Material) -> Material:
 
 
 static var _toene := {}
+static var _gruen := {}
+
+
+## Kenney-Pflanzen haben türkises Laub. Liefert ein Mesh, bei dem diese Flächen
+## ein warmes Blattgrün bekommen; alle anderen Farben bleiben.
+static func mit_blattgruen(mesh: Mesh) -> Mesh:
+	if _gruen.has(mesh):
+		return _gruen[mesh]
+	var neu_mesh: Mesh = mesh.duplicate()
+	for i in neu_mesh.get_surface_count():
+		var m := neu_mesh.surface_get_material(i)
+		if m is StandardMaterial3D:
+			var c: Color = (m as StandardMaterial3D).albedo_color
+			if c.g > c.r * 1.15 and c.b > c.r * 1.15:
+				var m2 := m.duplicate() as StandardMaterial3D
+				var hell := c.get_luminance()
+				m2.albedo_color = Color(0.42, 0.6, 0.2) * (0.55 + hell)
+				m2.albedo_color.a = 1.0
+				neu_mesh.surface_set_material(i, m2)
+	_gruen[mesh] = neu_mesh
+	return neu_mesh
 
 ## Abgetönte Variante eines Materials (z. B. wärmere Felsen).
 static func getoent_material(alt: Material, ton: Color) -> Material:

@@ -66,14 +66,14 @@ const WEGE := [
 	[[Vector2(4.0, 80.0), Vector2(3.0, 52.0), Vector2(2.5, 36.0), Vector2(2.0, 22.0), Vector2(-3.0, 13.0),
 		Vector2(-5.2, 5.0), Vector2(-6.2, -3.5), Vector2(-5.2, -8.0), Vector2(-2.0, -10.0), Vector2(1.0, -11.0)], 2.6],
 	# Vom Hof zur Feuerstelle und weiter zum Angelplatz
-	[[Vector2(-6.2, -3.5), Vector2(-10.0, -9.0), Vector2(-20.0, -12.5), Vector2(-31.0, -14.0)], 1.2],
+	[[Vector2(-6.2, -3.5), Vector2(-9.5, -8.5), Vector2(-12.5, -10.2), Vector2(-20.0, -12.5), Vector2(-31.0, -14.0)], 1.2],
 	# Vom Hof über Omas Brücke nach Alt-Haselgrund
 	[[Vector2(-5.2, 5.0), Vector2(-15.0, 7.5), Vector2(-28.5, 11.5), Vector2(-40.0, 16.0), Vector2(-50.0, 20.0)], 1.5],
 	# Siedlung zum Heuschober und zum Picknickplatz
 	[[Vector2(-50.0, 20.0), Vector2(-54.0, 10.0), Vector2(-56.0, 4.0)], 1.0],
 	[[Vector2(-40.0, 16.0), Vector2(-40.5, 28.0), Vector2(-40.0, 36.0)], 0.9],
-	# Vom Traktor hinauf zum Hochsitz
-	[[Vector2(22.0, -12.0), Vector2(34.0, -30.0), Vector2(40.0, -48.0), Vector2(43.0, -61.0)], 1.0],
+	# Vom Hof am Berg vorbei hinauf zum Hochsitz
+	[[Vector2(15.0, -9.0), Vector2(27.0, -14.0), Vector2(36.0, -30.0), Vector2(40.0, -48.0), Vector2(43.0, -61.0)], 1.0],
 	# Wildpfad hinter dem Berg zur Königseiche
 	[[Vector2(16.0, -52.0), Vector2(24.0, -64.0), Vector2(30.0, -76.0)], 0.0],
 	# Hof zum Hühnerstall
@@ -83,7 +83,7 @@ const WEGE := [
 # --- Orte ----------------------------------------------------------------------
 const ORTE := {
 	"hoftor": Vector3(2.0, 0, 22.0),
-	"feuerstelle": Vector3(-10.0, 0, -9.0),
+	"feuerstelle": Vector3(-12.0, 0, -12.5),
 	"angelplatz": Vector3(-33.0, 0, -13.0),
 	"bruecke_oma": Vector3(-28.8, 0, 11.6),
 	"bruecke_hof": Vector3(2.5, 0, 35.2),
@@ -94,7 +94,12 @@ const ORTE := {
 	"hochsitz": Vector3(44.0, 0, -63.0),
 	"koenigseiche": Vector3(30.0, 0, -78.0),
 	"mondlichtung": Vector3(-8.0, 0, -92.0),
-	"traktor": Vector3(22.0, 0, -12.0),
+	"traktor": Vector3(19.5, 0, -39.5),
+	"brunnen": Vector3(-10.0, 0, 2.0),
+	"garten": Vector3(-11.1, 0, 12.25),
+	"huehnerstall": Vector3(15.8, 0, 8.2),
+	"holzlager": Vector3(13.0, 0, 1.8),
+	"apfelbaum": Vector3(-6.0, 0, 18.5),
 }
 
 ## Baumgruppen in der Talsohle, von Hand gesetzt. [Mitte, Anzahl, Streuung, Art]
@@ -116,6 +121,25 @@ const BAUMGRUPPEN := [
 	[Vector2(48.0, 18.0), 3, 6.0, "herbst"],
 	[Vector2(-44.0, -32.0), 2, 3.0, "kahl"],
 ]
+
+
+## Bebaute Flächen des Anwesens (x, z, Breite, Tiefe): hier wächst nichts Wildes.
+const BEBAUT := [
+	Rect2(-3.3, 2.9, 10.6, 3.2),      # Veranda
+	Rect2(-14.9, 8.2, 7.6, 8.1),      # Garten
+	Rect2(-11.2, 0.8, 2.4, 2.4),      # Brunnen
+	Rect2(14.0, 6.9, 3.8, 2.8),       # Hühnerstall
+	Rect2(11.2, 0.9, 4.8, 2.8),       # Holzlager
+	Rect2(-14.6, -14.6, 4.6, 5.2),    # Feuerstelle
+	Rect2(-14.6, 20.8, 33.0, 2.2),    # Hofzaun, Tor, Briefkasten
+]
+
+
+static func bebaut(x: float, z: float, rand := 0.0) -> bool:
+	for r in BEBAUT:
+		if (r as Rect2).grow(rand).has_point(Vector2(x, z)):
+			return true
+	return false
 
 
 static func tal_r(x: float, z: float) -> float:

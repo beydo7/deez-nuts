@@ -372,10 +372,17 @@ func _schalter(titel: String, schluessel: String) -> Control:
 
 
 # --- Intro und Steuerung ------------------------------------------------------------
+## Ein Zettel, Brief oder Bauplan zum Lesen.
+func zeige_zettel(titel: String, text: String) -> void:
+	_oeffnen("zettel")
+	var v := Stil.fenster(_wurzel, titel, 720, 520, schliessen)
+	v.add_child(Stil.label(text, 19, Stil.TEXT, true))
+
+
 func zeige_intro() -> void:
 	_oeffnen("intro", true)
 	var v := Stil.fenster(_wurzel, "Deez Nuts!", 860, 700, Callable())
-	v.add_child(Stil.label("Opa Walter hat dir seine alte Nussknackerei vererbt – und kurz vor seinem Tod einen Vertrag mit der Lebkuchenfabrik unterschrieben. Heute früh hat ein Laster eine Million Nüsse in den Hof gekippt. Du hast: zwei Hände und Hosentaschen. Trag den Berg ab!", 19, Stil.TEXT, true))
+	v.add_child(Stil.label("Opa Walter hat 52 Jahre lang Nüsse gesammelt und nie eine einzige verkauft. Jetzt gehört dir der Haselgrund: seine Hütte, sein Tal und ein Berg aus einer Million Nüssen. Du hast zwei Hände und Hosentaschen. Trag den Berg ab!", 19, Stil.TEXT, true))
 	v.add_child(Stil.label("So geht's", 24, Stil.GOLD))
 	var steuerung := """Draußen am Nussberg:
    [Linksklick halten] Nüsse sammeln · ist der Beutel voll, lauf in den gelben Kreis am Silo

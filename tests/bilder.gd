@@ -47,7 +47,14 @@ func _ready() -> void:
 			["01d_wasserfall", Vector2(-43.0, -55.0), Vector3(-52.0, 2.6, -69.0)],
 			["01e_omas_bruecke", Vector2(-20.0, 4.0), Vector3(-29.0, 0.6, 11.6)],
 			["01f_bach_sued", Vector2(-12.0, 37.5), Vector3(-30.0, 0.0, 10.0)],
-			["01g_waldrand", Vector2(-24.0, -64.0), Vector3(-50.0, 4.0, -80.0)]]:
+			["01g_waldrand", Vector2(-24.0, -64.0), Vector3(-50.0, 4.0, -80.0)],
+			["01h_veranda", Vector2(2.0, 12.0), Vector3(2.0, 1.5, 4.0)],
+			["01i_garten", Vector2(-4.0, 10.0), Vector3(-11.0, 0.8, 12.0)],
+			["01j_feuerstelle", Vector2(-9.5, -13.5), Vector3(-12.6, 0.3, -12.0)],
+			["01k_brunnen", Vector2(-6.5, 4.5), Vector3(-10.0, 1.0, 2.0)],
+			["01l_stall_holzlager", Vector2(9.0, 13.0), Vector3(15.5, 0.8, 7.0)],
+			["01m_traktor", Vector2(25.0, -42.5), Vector3(19.5, 1.0, -39.5)],
+			["01n_werkstatt", Vector2(4.0, 0.5), Vector3(8.6, 0.9, 2.2)]]:
 		var p: Vector2 = blick[1]
 		s.global_position = Vector3(p.x, g.hoehe_bei(p.x, p.y) + 0.1, p.y)
 		await _warte(0.4)
