@@ -55,7 +55,59 @@ func _ready() -> void:
 
 func _aeren() -> void:
 	print("-- Ären")
-	await warte(0.05)
+	var ae: Aeren = welt.aeren
+	var berg: Nussberg = welt.berg
+	pruefe(ae.find_child("BlasserBoden", true, false) != null, "Blasser Boden liegt unter dem Berg")
+	for n in ["Kuppenfahne", "ErsterKorb", "AlteSchubkarre", "OpasHut", "opas_erste_huette", "Dampfmaschine", "OpasFahrrad", "LetztesGeheimnis"]:
+		pruefe(ae.find_child(n, true, false) != null, "Fund %s liegt im Berg" % n)
+	var huette: Node3D = ae.find_child("opas_erste_huette", true, false)
+	pruefe(berg.hoehe_bei(huette.global_position.x, huette.global_position.z) > 3.4, "Opas erste Hütte ist ganz von Nüssen bedeckt")
+	var maschine: Node3D = ae.find_child("Dampfmaschine", true, false)
+	pruefe(berg.hoehe_bei(maschine.global_position.x, maschine.global_position.z) > 3.6, "Dampfmaschine ist bedeckt")
+	# Fahne steht oben auf der Kuppe
+	var fahne: Node3D = ae.find_child("Kuppenfahne", true, false)
+	await warte(2.5)
+	var kuppe := berg.hoehe_bei(fahne.global_position.x, fahne.global_position.z)
+	pruefe(absf(fahne.global_position.y - (kuppe - 0.3)) < 0.25, "Fahne steht auf der Kuppe (%.1f m)" % fahne.global_position.y)
+	# Die Luke ist unter dem Berg nicht erreichbar
+	var luke: Interaktiv = null
+	for c in ae.find_child("LetztesGeheimnis", true, false).get_children():
+		if c is Interaktiv:
+			luke = c
+	pruefe(luke != null and luke.collision_layer == 0, "Luke ist unter dem Berg nicht erreichbar")
+	# Bauten je Ära
+	pruefe(ae.find_child("Aera2", true, false) == null, "In Ära 1 steht noch nichts am Berg")
+	for a in [2, 3, 4]:
+		ae._bauen(a, a == 2)
+		var k: Node = ae.find_child("Aera%d" % a, true, false)
+		pruefe(k != null and k.get_child_count() >= 3, "Bauten der Ära %d stehen" % a)
+	Game.posten["posten_west"] = true
+	ae._lichterketten()
+	Game.posten.erase("posten_west")
+	pruefe(ae.find_child("Lichterkette_posten_west", true, false) != null, "Lichterkette am Förderband West")
+	# Lampen brennen nur nachts
+	var zeit_vorher := Game.tageszeit
+	Game.tageszeit = 22.0
+	await warte(0.8)
+	var an := 0
+	for l in ae._lampen:
+		if l.visible:
+			an += 1
+	pruefe(an == ae._lampen.size() and an >= 8, "Nachts brennen alle %d Lampen" % an)
+	Game.tageszeit = 10.5
+	await warte(0.8)
+	pruefe(not ae._lampen[0].visible, "Tagsüber sind die Lampen aus")
+	Game.tageszeit = zeit_vorher
+	# Das letzte Geheimnis: Luke öffnen zeigt Opas Brief im Abspann
+	ae.luke_oeffnen()
+	await warte(0.3)
+	pruefe(welt.menues.offen == "ende", "Luke öffnet den Abspann mit Opas Brief")
+	welt.menues.offen = ""
+	welt.menues.schliessen()
+	welt.spieler.gesperrt = false
+	pruefe(Game.extra.get("luke_offen", false) == true, "Geöffnete Luke wird gemerkt")
+	Game.extra.erase("luke_offen")
+	await warte(0.2)
 
 
 func _tal() -> void:

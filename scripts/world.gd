@@ -104,7 +104,10 @@ func _ready() -> void:
 		_posten_bauen(pid)
 	_helfer_aufstellen()
 	_silo_aktualisieren()
-	Game.berg_leer.connect(func(): _menue(menues.zeige_ende))
+	Game.berg_leer.connect(func():
+		Sfx.spiele("meilenstein")
+		hud.zeige_banner("Der Berg ist leer!", "Wo die Kuppe war, liegt etwas im Boden")
+		Game.toast.emit("Der Berg ist leer! Schau nach, was dort liegt, wo die Kuppe war.", Game.FARBE_GOLD))
 	station.geknackt.connect(_knack_effekt)
 	for id in Game.maschinen:
 		_maschine_aufstellen(id, false)

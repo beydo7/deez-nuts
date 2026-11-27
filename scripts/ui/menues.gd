@@ -402,10 +402,15 @@ Am Bestellbrett vor der Hütte (oder [B]) kaufst du Werkzeug, Beutel, Helfer und
 		schliessen(), 24))
 
 
-func zeige_ende() -> void:
+## Der Abspann. Mit Brief (aus der Luke unter dem Berg) oder ohne.
+func zeige_ende(brief := "") -> void:
 	_oeffnen("ende", true)
-	var v := Stil.fenster(_wurzel, "Der Berg ist leer!", 760, 460, Callable())
-	v.add_child(Stil.label("Ganz unten lag Opas goldene Nuss. Darin steckte ein kleiner Zettel:", 20, Stil.TEXT, true))
+	var v := Stil.fenster(_wurzel, "Der Berg ist leer!", 780, 700 if brief != "" else 460, Callable())
+	if brief != "":
+		v.add_child(Stil.label(brief, 18, Stil.TEXT, true))
+		v.add_child(Stil.label("Du nimmst den Setzling und pflanzt ihn dorthin, wo der Berg war.", 19, Stil.GOLD, true))
+	else:
+		v.add_child(Stil.label("Wo die Kuppe war, liegt eine Luke im Boden. Opa hat dort etwas für dich hinterlassen.", 20, Stil.TEXT, true))
 	v.add_child(Stil.label("„Deez Nuts!“", 48, Stil.GOLD))
 	var st := Game.statistik
 	v.add_child(Stil.label("Eine Million Nüsse in %d Minuten. Perfekte Knacke: %s. Geklaut: %s." % [int(Game.spielzeit / 60.0), Data.zahl(st.perfekt), Data.zahl(st.gestohlen)], 18, Stil.LEISE, true))

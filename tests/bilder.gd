@@ -20,6 +20,16 @@ func _ready() -> void:
 	var berg: Nussberg = welt.berg
 	# Nur bestimmte Blicke: --blicke=name:x,z,zielx,ziely,zielz;name2:...
 	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--aera="):
+			for a in range(2, int(arg.substr(7)) + 1):
+				welt.aeren._bauen(a, false)
+		if arg.begins_with("--graben="):
+			# --graben=x,z,radius,anzahl;... räumt Nüsse weg, damit Funde im Berg sichtbar werden
+			for teil in arg.substr(9).split(";"):
+				var gw := teil.split(",")
+				var n := berg.abbauen(Vector3(float(gw[0]), 0, float(gw[1])), float(gw[2]), int(gw[3]))
+				Game.nuesse_vom_berg(n)
+			await _warte(6.0)
 		if arg.begins_with("--blicke="):
 			print("BLICKE ", arg)
 			for teil in arg.substr(9).split(";"):
@@ -194,6 +204,10 @@ func _warte(sek: float) -> void:
 
 func _foto(name: String) -> void:
 	await RenderingServer.frame_post_draw
+	print("Messung %s: %d Draw Calls, %d Dreiecke, %d Objekte" % [name,
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
 	var bild := get_viewport().get_texture().get_image()
 	bild.save_png("%s/%s.png" % [ziel, name])
 	print("Bild: ", name)
