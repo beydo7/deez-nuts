@@ -62,6 +62,16 @@ func _ready() -> void:
 	welt.station.druecken_ende()
 	s.aufstehen()
 	await _warte(0.8)
+	# Schale neben dem Knacker anvisieren: [E] nehmen, Linksklick hinsetzen
+	var sch: Item = welt.item_spawnen({"art": "schale", "nuss": "wal"}, welt.station.global_position + Vector3(0.09, 0.04, 0.05), Vector3.ZERO)
+	await _warte(0.6)
+	_blick(s, Vector3(0.15, 0.05, -1.45), 0.0, -0.5)
+	var kopf := s._kopf_transform().origin
+	var r := sch.global_position - kopf
+	s.rotation.y = atan2(-r.x, -r.z)
+	s._blick_x = atan2(r.y, Vector2(r.x, r.z).length())
+	await _warte(0.4)
+	await _foto("04b_schale_nehmen")
 	# Blick aus dem Fenster auf den Berg
 	_blick(s, Vector3(0.55, 0.05, -1.7), 0.0, 0.08)
 	await _warte(0.8)

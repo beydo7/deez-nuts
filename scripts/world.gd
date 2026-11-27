@@ -406,6 +406,8 @@ func _kueche() -> void:
 	# Tisch, Hocker, Teppich
 	Einrichtung.tisch(k, Vector3(0.15, 0, TISCH_Z), Vector3(2.4, TISCH_Y, 0.9))
 	Einrichtung.hocker(k, Vector3(0.15, 0, -1.55))
+	var sitz := Interaktiv.erzeuge(k, Vector3(0.4, 0.62, 0.4), Vector3(0.15, 0.31, -1.55), "An die Knackbank setzen", func(s): s.hinsetzen(station))
+	sitz.info = func(): return "Hocker"
 	Einrichtung.teppich(k, Vector3(0.15, 0, -1.4), Vector2(2.6, 1.6), Color(0.62, 0.2, 0.14), Color(0.5, 0.15, 0.1))
 	# Knackstation
 	station = Knackstation.new()

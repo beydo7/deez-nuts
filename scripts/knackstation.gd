@@ -48,8 +48,9 @@ var _hand_l_ruhe := Transform3D.IDENTITY
 
 func _ready() -> void:
 	# Schneidebrett mit Mulde
-	var brett := Bau.mesh_instanz(Bau.box_mesh(Vector3(0.5, BRETT_H, 0.32)), Look.holz(Look.KIEFER, 9.0, 0.15), Vector3(0, BRETT_H * 0.5, 0))
-	add_child(brett)
+	add_to_group("knackstation")
+	# Schneidebrett mit eigener Kollision, damit Schalen oben drauf liegen statt darin zu versinken
+	Bau.block(self, Vector3(0.5, BRETT_H, 0.32), Vector3(0, BRETT_H * 0.5, 0), Look.holz(Look.KIEFER, 9.0, 0.15))
 	koerper = Interaktiv.erzeuge(self, Vector3(0.17, 0.15, 0.15), Vector3(0, 0.075, 0), "Knacker", Callable())
 	koerper.set_meta("station", self)
 	hand_r = Hand.erzeuge(false)

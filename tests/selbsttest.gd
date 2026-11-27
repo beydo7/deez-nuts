@@ -300,6 +300,40 @@ func _spieler() -> void:
 	_taste(KEY_E)
 	await warte(0.6)
 	pruefe(not s.sitzt, "[E] steht wieder auf")
+	# Schale direkt neben dem Knacker: [E] nimmt sie, Linksklick setzt sich hin
+	for versatz in [Vector3(0.07, 0.04, 0.02), Vector3(-0.08, 0.04, 0.05), Vector3(0.03, 0.04, 0.09)]:
+		s.global_position = Vector3(0.15, 0.05, -1.45)
+		var schale: Item = welt.item_spawnen({"art": "schale", "nuss": "wal"}, welt.station.global_position + versatz, Vector3.ZERO)
+		await warte(0.6)
+		_zielen_auf(s, schale.global_position)
+		await warte(0.15)
+		pruefe(s.ziel == schale, "Schale neben dem Knacker anvisiert (%s)" % str(versatz))
+		pruefe(s.hinweis.contains("nehmen"), "Hinweis sagt „nehmen“, nicht „hinsetzen“")
+		s._benutzen()
+		await warte(0.1)
+		pruefe(s.gehalten == schale and not s.sitzt, "[E] nimmt die Schale statt hinzusetzen")
+		s._loslassen(Vector3.ZERO)
+		if is_instance_valid(schale):
+			schale.queue_free()
+	var sch2: Item = welt.item_spawnen({"art": "schale", "nuss": "wal"}, welt.station.global_position + Vector3(0.07, 0.04, 0.02), Vector3.ZERO)
+	await warte(0.6)
+	_zielen_auf(s, sch2.global_position)
+	await warte(0.15)
+	pruefe(s.ziel_station == welt.station, "Knackbank bleibt für Linksklick erreichbar")
+	s._druecken_an()
+	pruefe(s.sitzt and s.gehalten == null, "Linksklick auf die Schale am Knacker setzt sich hin")
+	s.aufstehen()
+	await warte(0.5)
+	sch2.queue_free()
+	# Hocker
+	s.global_position = Vector3(0.15, 0.05, -0.7)
+	_zielen_auf(s, Vector3(0.15, 0.4, -1.55))
+	await warte(0.15)
+	s._benutzen()
+	pruefe(s.sitzt, "[E] auf den Hocker setzt sich an die Knackbank")
+	s.aufstehen()
+	await warte(0.5)
+	s.global_position = Vector3(0.15, 0.05, -1.45)
 	# Eine Hälfte neben dem Knacker greifen
 	var haelfte: Item = welt.item_spawnen({"art": "haelfte", "nuss": "wal", "wert": 4.0}, welt.station.global_position + Vector3(0.16, 0.05, 0.06), Vector3.ZERO)
 	await warte(0.6)
@@ -310,6 +344,13 @@ func _spieler() -> void:
 	s._blick_x = atan2(richtung.y, Vector2(richtung.x, richtung.z).length())
 	await warte(0.2)
 	pruefe(s.ziel == haelfte, "Hälfte neben dem Knacker lässt sich anvisieren")
+
+
+func _zielen_auf(s: Spieler, punkt: Vector3) -> void:
+	var kopf := s._kopf_transform().origin
+	var richtung := punkt - kopf
+	s.rotation.y = atan2(-richtung.x, -richtung.z)
+	s._blick_x = atan2(richtung.y, Vector2(richtung.x, richtung.z).length())
 
 
 func _taste(k: Key) -> void:

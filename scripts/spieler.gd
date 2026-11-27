@@ -18,6 +18,7 @@ var ziel = null                  # worauf gerade gezielt wird
 var ziel_punkt := Vector3.ZERO
 var hinweis := ""                # Haupt-Hinweis am Fadenkreuz, z. B. "[E] Glas tragen"
 var hinweis2 := ""               # Zweite Zeile (Infos)
+var ziel_station: Knackstation = null   # Knackbank in Reichweite des Blicks (für Linksklick = hinsetzen)
 var aktive_station: Knackstation = null
 var gesperrt := false            # true, wenn ein Menü offen ist
 var sitzt := false
@@ -323,6 +324,7 @@ func _halten(delta: float) -> void:
 # =============================================================================
 func _zielen() -> void:
 	ziel = null
+	ziel_station = null
 	hinweis = ""
 	hinweis2 = ""
 	var raum := get_world_3d().direct_space_state
@@ -345,7 +347,7 @@ func _zielen() -> void:
 	# Kleine Teile verzeihend auswählen: in der Nähe des Trefferpunkts nach Items suchen
 	if not (ziel is Item) and not (ziel is Behaelter):
 		var kugel := SphereShape3D.new()
-		kugel.radius = 0.08
+		kugel.radius = 0.1
 		var form := PhysicsShapeQueryParameters3D.new()
 		form.shape = kugel
 		form.transform = Transform3D(Basis(), ziel_punkt)
@@ -360,12 +362,18 @@ func _zielen() -> void:
 				if a < best_abstand:
 					best_abstand = a
 					bester = n.collider
-		var st := _station_von(ziel)
-		if bester and (st == null or gehalten or best_abstand < 0.06):
+		# Greifbares hat für [E] immer Vorrang vor der Knackbank.
+		# Die Knackbank bleibt für [Linksklick] erreichbar (ziel_station).
+		ziel_station = _station_von(ziel)
+		if bester:
 			ziel = bester
 	if ziel is Item and ziel.fliegt:
 		ziel = null
+	if ziel_station == null and (ziel is Item):
+		ziel_station = _station_neben(ziel.global_position)
 	hinweis = _hinweis_fuer(ziel)
+	if ziel_station and not gehalten and _station_von(ziel) == null and hinweis != "":
+		hinweis2 = "[Linksklick] an die Knackbank setzen"
 	_markieren(_markier_knoten(ziel) if hinweis != "" else null)
 
 
@@ -396,6 +404,15 @@ func _markieren(n: Node) -> void:
 func _station_von(o) -> Knackstation:
 	if o is Interaktiv and o.has_meta("station"):
 		return o.get_meta("station")
+	return null
+
+
+## Eine Knackbank, auf deren Brett dieser Punkt liegt (sonst null).
+func _station_neben(punkt: Vector3) -> Knackstation:
+	for st in get_tree().get_nodes_in_group("knackstation"):
+		var d: Vector3 = st.to_local(punkt)
+		if absf(d.x) < 0.3 and absf(d.z) < 0.22 and d.y > -0.05 and d.y < 0.25:
+			return st
 	return null
 
 
@@ -544,6 +561,8 @@ func _druecken_an() -> void:
 		_werfen()
 		return
 	var st := _station_von(ziel)
+	if st == null:
+		st = ziel_station
 	if st:
 		hinsetzen(st)
 		return

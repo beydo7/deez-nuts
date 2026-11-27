@@ -23,7 +23,8 @@ var _ziel_text: Label
 var _ziel_hilfe: Label
 var _ziel_balken: ProgressBar
 var _prompt: HBoxContainer
-var _prompt2: Label
+var _prompt2: HBoxContainer
+var _prompt2_alt := ""
 var _tasten_leiste: HBoxContainer
 var _glas_box: PanelContainer
 var _glas_text: Label
@@ -177,8 +178,9 @@ func _mitte_bauen() -> void:
 	_prompt.alignment = BoxContainer.ALIGNMENT_CENTER
 	_prompt.add_theme_constant_override("separation", 8)
 	box.add_child(_prompt)
-	_prompt2 = Stil.label("", 17, Stil.LEISE)
-	_prompt2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_prompt2 = HBoxContainer.new()
+	_prompt2.alignment = BoxContainer.ALIGNMENT_CENTER
+	_prompt2.add_theme_constant_override("separation", 6)
 	box.add_child(_prompt2)
 	_stempel = Stil.label("", 54, Stil.GOLD)
 	_stempel.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -281,8 +283,10 @@ func _process(delta: float) -> void:
 		var p := spieler.hinweis
 		if p != _prompt_alt:
 			_prompt_alt = p
-			_prompt_setzen(p)
-		_prompt2.text = spieler.hinweis2
+			_prompt_setzen(p, _prompt, 18, 22, Stil.TEXT)
+		if spieler.hinweis2 != _prompt2_alt:
+			_prompt2_alt = spieler.hinweis2
+			_prompt_setzen(spieler.hinweis2, _prompt2, 15, 17, Stil.LEISE)
 		_kreuz.aktiv = p != ""
 		_kreuz.sitzend = sitzt
 		var st := spieler.blickt_auf_station()
@@ -311,17 +315,16 @@ func _process(delta: float) -> void:
 		_ziel_zeichnen()
 
 
-func _prompt_setzen(text: String) -> void:
-	for c in _prompt.get_children():
+func _prompt_setzen(text: String, ziel: HBoxContainer, tasten_groesse: int, text_groesse: int, farbe: Color) -> void:
+	for c in ziel.get_children():
 		c.queue_free()
 	if text == "":
 		return
-	var teile := _tasten_teilen(text)
-	for t in teile:
+	for t in _tasten_teilen(text):
 		if t[0]:
-			_prompt.add_child(Stil.taste(t[1]))
+			ziel.add_child(Stil.taste(t[1], tasten_groesse))
 		else:
-			_prompt.add_child(Stil.label(t[1], 22, Stil.TEXT))
+			ziel.add_child(Stil.label(t[1], text_groesse, farbe))
 
 
 ## Zerlegt "[E] Glas tragen" in [[true,"E"],[false,"Glas tragen"]].
