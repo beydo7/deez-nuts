@@ -204,7 +204,8 @@ func combo_bonus() -> float:
 
 
 func gold_chance() -> float:
-	return Data.CHANCE_GOLD * (1.0 + bonus("gold")) * (2.0 if hat_talent("goldhand") else 1.0)
+	var hexenring := 2.0 if spielzeit < float(extra.get("hexen_bis", 0.0)) else 1.0
+	return Data.CHANCE_GOLD * (1.0 + bonus("gold")) * (2.0 if hat_talent("goldhand") else 1.0) * hexenring
 
 
 func faul_chance() -> float:
@@ -225,7 +226,7 @@ func werkzeug_werte(id: String = "") -> Dictionary:
 		"name": w.name,
 		"kraft": w.kraft * (1.0 + 0.05 * stufe),
 		"zeit": w.zeit * pow(0.95, stufe),
-		"sweet": w.sweet + 0.005 * stufe + bonus("sweet") + (0.06 if hat_talent("ruhige_hand") else 0.0),
+		"sweet": w.sweet + 0.005 * stufe + bonus("sweet") + (0.06 if hat_talent("ruhige_hand") else 0.0) + (0.03 if hat_fund("figuren") else 0.0),
 		"stufe": stufe,
 	}
 
@@ -604,6 +605,59 @@ func lerne_talent(id: String) -> bool:
 	return kaufe_skill(id)
 
 
+# --- Fundbuch und Geheimnisse ------------------------------------------------------
+signal fund_gemacht(id: String)
+
+
+func hat_fund(id: String) -> bool:
+	var f = extra.get("funde", {})
+	return typeof(f) == TYPE_DICTIONARY and bool(f.get(id, false))
+
+
+func funde_anzahl() -> int:
+	var n := 0
+	for f in Data.FUNDE:
+		if hat_fund(f.id):
+			n += 1
+	return n
+
+
+## Trägt eine Entdeckung ins Fundbuch ein. false, wenn sie schon drinsteht.
+func fund(id: String) -> bool:
+	if hat_fund(id) or Data.fund_daten(id).is_empty():
+		return false
+	var f = extra.get("funde", {})
+	if typeof(f) != TYPE_DICTIONARY:
+		f = {}
+	f[id] = true
+	extra["funde"] = f
+	Sfx.spiele("gold")
+	toast.emit("Fundbuch: %s  (%d von %d)" % [Data.fund_daten(id).name, funde_anzahl(), Data.FUNDE.size()], FARBE_GOLD)
+	fund_gemacht.emit(id)
+	stand_geaendert.emit()
+	return true
+
+
+## Mit der Goldenen Zahnbürste ist jede 50. gesammelte Nuss eine Mondnuss.
+func zahnbuerste_gesammelt(anzahl: int) -> void:
+	if sammler_aktiv != "zahnbuerste" or anzahl <= 0:
+		return
+	var z := int(extra.get("zahnbuerste", 0)) + anzahl
+	while z >= Data.MONDNUSS_JEDE:
+		z -= Data.MONDNUSS_JEDE
+		verdiene(Data.MONDNUSS_WERT, false)
+		Sfx.spiele("gold", -4.0, 1.3)
+		toast.emit("Eine Mondnuss! +%s Münzen" % Data.zahl(Data.MONDNUSS_WERT), FARBE_GOLD)
+	extra["zahnbuerste"] = z
+
+
+## Wie viele Kernhälften ein wildes Eichhörnchen klaut. Freunde der Krone verlieren ein Viertel weniger.
+func klau_menge(basis: int) -> int:
+	if hat_fund("koenig") and rng.randf() < 0.25 * basis:
+		return max(0, basis - 1)
+	return basis
+
+
 # --- Knacken und Berg --------------------------------------------------------
 func nuesse_vom_berg(anzahl: int) -> int:
 	var n: int = min(anzahl, berg_rest())
@@ -890,6 +944,8 @@ func ziel_melden(id: String, menge := 1) -> void:
 func naechstes_kaufziel() -> Dictionary:
 	var kandidaten: Array = []
 	for w in Data.SAMMLER:
+		if w.get("geheim", false):
+			continue
 		if not sammler.has(w.id) and int(w.aera) <= aera:
 			kandidaten.append({"name": w.name, "preis": float(w.preis), "art": "Sammeln"})
 			break

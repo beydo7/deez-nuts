@@ -52,6 +52,14 @@ func setze(neu: String) -> void:
 			_ohne_schatten(l)
 			_hand_an(Vector3(0, 0.02, 0.04))
 			_ruhe = Transform3D(Basis.from_euler(Vector3(-0.35, 0.15, 0)), Vector3(0.26, -0.27, -0.42))
+		"zahnbuerste":
+			var gold := Look.metall(Color(0.95, 0.76, 0.26), 0.25)
+			Bau.teil(_modell, Bau.box_mesh(Vector3(0.016, 0.01, 0.3)), gold, Vector3(0, 0, -0.14))
+			Bau.teil(_modell, Bau.box_mesh(Vector3(0.022, 0.012, 0.06)), gold, Vector3(0, 0, -0.31))
+			for i in 8:
+				Bau.teil(_modell, Bau.box_mesh(Vector3(0.006, 0.018, 0.006)), Bau.mat(Color(0.96, 0.96, 0.98)), Vector3(-0.006 + (i % 2) * 0.012, -0.014, -0.288 - (i / 2) * 0.014))
+			_hand_an(Vector3(0, 0.02, 0.04))
+			_ruhe = Transform3D(Basis.from_euler(Vector3(-0.35, 0.15, 0)), Vector3(0.26, -0.27, -0.42))
 		"harke":
 			Bau.teil(_modell, Bau.zylinder_mesh(0.014, 0.014, 1.2, 10), holz, Vector3(0, 0, -0.5), Vector3(-90, 0, 0))
 			Bau.teil(_modell, Bau.box_mesh(Vector3(0.36, 0.025, 0.03)), stahl, Vector3(0, 0, -1.1))

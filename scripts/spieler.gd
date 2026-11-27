@@ -42,6 +42,7 @@ var _rausch := FastNoiseLite.new()
 var geraet: Sammelgeraet
 var sammel_punkt := Vector3.INF      # Stelle am Berg, auf die man gerade zielt (in Reichweite)
 var sammelt := false
+var fege_ziel = null                 # Geheimnisse-Knoten, wenn man auf Mondstaub zielt
 var _sammel_acc := 0.0
 var _sammel_ton := 0.0
 var _staub_timer := 0.0
@@ -316,6 +317,7 @@ func _process(delta: float) -> void:
 # =============================================================================
 func _berg_zielen() -> void:
 	sammel_punkt = Vector3.INF
+	fege_ziel = null
 	var berg: Nussberg = welt.get("berg") if welt else null
 	if berg == null:
 		return
@@ -324,7 +326,17 @@ func _berg_zielen() -> void:
 	var anfrage := PhysicsRayQueryParameters3D.create(k.origin, k.origin - k.basis.z * w.reichweite, Data.L_WELT)
 	anfrage.exclude = [get_rid()]
 	var t := get_world_3d().direct_space_state.intersect_ray(anfrage)
-	if t.is_empty() or not berg.ist_berg(t.collider):
+	if t.is_empty():
+		return
+	if not berg.ist_berg(t.collider):
+		# Kein Berg: vielleicht der Mondstaub im Krater
+		var gh = welt.get("geheimnisse")
+		if gh != null and gh.has_method("staub_bei") and gh.staub_bei(t.position):
+			fege_ziel = gh
+			sammel_punkt = t.position
+			if hinweis == "" and gehalten == null:
+				hinweis = "[Linksklick] halten: Mondstaub wegfegen"
+				hinweis2 = gh.staub_text()
 		return
 	sammel_punkt = t.position
 	if hinweis == "" and gehalten == null:
@@ -346,6 +358,14 @@ func _sammeln(delta: float) -> void:
 	if not aktiv:
 		geraet.arbeitet = false
 		_sammel_acc = 0.0
+		return
+	if fege_ziel != null:
+		geraet.arbeitet = true
+		sammelt = true
+		fege_ziel.fegen(sammel_punkt, Game.sammel_werte(), delta)
+		if _sammel_ton <= 0.0:
+			_sammel_ton = 0.2
+			Sfx.spiele("sog" if geraet.ist_sauger() else "wischen", -12.0, randf_range(0.9, 1.15), 0.08)
 		return
 	if Game.beutel_frei() <= 0:
 		geraet.arbeitet = false
@@ -374,6 +394,7 @@ func _sammeln(delta: float) -> void:
 	if weg <= 0:
 		return
 	Game.nuesse_vom_berg(weg)
+	Game.zahnbuerste_gesammelt(weg)
 	var sorten := {}
 	for i in weg:
 		var nuss := Data.zufalls_nuss(Game.genommen, Game.rng)
