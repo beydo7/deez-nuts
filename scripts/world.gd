@@ -29,6 +29,11 @@ var bruchschale: Behaelter
 var kiste: Behaelter = null
 var berg: Nussberg
 var gelaende: Gelaende
+var umwelt: Environment
+var himmel: Himmel
+var tierwelt: Tierwelt
+var geheimnisse: Geheimnisse
+var aeren: Aeren
 var flug: NussFlug
 
 var _schale_bereich: Area3D
@@ -51,7 +56,7 @@ var _band_kisten: Array = []
 var _hebel_arm: Node3D
 var _klappe: Node3D
 var _uhr_zeiger: Array = []
-var _sonne: DirectionalLight3D
+var sonne: DirectionalLight3D
 
 var _rutsche_timer := 0.0
 var _walze_acc := 0.0
@@ -105,6 +110,14 @@ func _ready() -> void:
 		_maschine_aufstellen(id, false)
 	_berg_aktualisieren()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	himmel = Himmel.new(self)
+	add_child(himmel)
+	tierwelt = Tierwelt.new(self)
+	add_child(tierwelt)
+	geheimnisse = Geheimnisse.new(self)
+	add_child(geheimnisse)
+	aeren = Aeren.new(self)
+	add_child(aeren)
 	Sfx.musik_starten()
 	if Game.erster_start:
 		call_deferred("_menue", menues.zeige_intro)
@@ -202,15 +215,16 @@ func _umgebung() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
-	_sonne = DirectionalLight3D.new()
-	_sonne.rotation_degrees = Vector3(-30, 160, 0)
-	_sonne.light_color = Color(1.0, 0.86, 0.68)
-	_sonne.light_energy = 2.4
-	_sonne.shadow_enabled = true
-	_sonne.shadow_blur = 1.5
-	_sonne.directional_shadow_max_distance = 45.0
-	_sonne.light_volumetric_fog_energy = 2.5
-	add_child(_sonne)
+	umwelt = env
+	sonne = DirectionalLight3D.new()
+	sonne.rotation_degrees = Vector3(-30, 160, 0)
+	sonne.light_color = Color(1.0, 0.86, 0.68)
+	sonne.light_energy = 2.4
+	sonne.shadow_enabled = true
+	sonne.shadow_blur = 1.5
+	sonne.directional_shadow_max_distance = 45.0
+	sonne.light_volumetric_fog_energy = 2.5
+	add_child(sonne)
 
 
 # =============================================================================

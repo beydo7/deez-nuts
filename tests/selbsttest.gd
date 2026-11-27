@@ -30,6 +30,9 @@ func _ready() -> void:
 	await _tal()
 	await _anwesen()
 	await _siedlung()
+	await _leben()
+	await _geheimnisse()
+	await _aeren()
 	await _berg_und_sammeln()
 	await _abliefern()
 	await _knacken()
@@ -48,6 +51,11 @@ func _ready() -> void:
 	for f in fehler:
 		print("   - ", f)
 	get_tree().quit(1 if fehler.size() > 0 else 0)
+
+
+func _aeren() -> void:
+	print("-- Ären")
+	await warte(0.05)
 
 
 func _tal() -> void:
@@ -93,6 +101,11 @@ func _tal() -> void:
 	print("   Modellplätze: ", Modelle.plaetze)
 	s.global_position = Vector3(0.15, 0.05, -1.0)
 	await warte(0.3)
+
+
+func _geheimnisse() -> void:
+	print("-- Geheimnisse")
+	await warte(0.05)
 
 
 func _anwesen() -> void:
@@ -149,6 +162,11 @@ func _anwesen() -> void:
 	s.gesperrt = false
 	s.global_position = Vector3(0.15, 0.05, -1.0)
 	await warte(0.3)
+
+
+func _leben() -> void:
+	print("-- Leben: Tag-Nacht, Wetter, Tiere")
+	await warte(0.05)
 
 
 func _siedlung() -> void:

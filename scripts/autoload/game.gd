@@ -56,6 +56,10 @@ var lager := {}                 # Nusssorte -> Anzahl im Lager der Hütte
 var helfer: int = 0
 var posten := {}                # id -> true
 var bestellungen: Array = []
+var tageszeit: float = 10.5     # Stunden 0..24; der Himmel zählt weiter
+var wetter := "klar"            # klar | bewoelkt | regen
+var letzter_regen := -99999.0   # Spielzeit (Sekunden), zu der es zuletzt geregnet hat
+var extra := {}                 # freie Ablage für Welt-Zustände (Funde, Opfergaben, Bauten ...), wird mitgespeichert
 var behaelter := {}             # vom World-Skript befüllt / gelesen
 var statistik := {"perfekt": 0, "bruch": 0, "matsch": 0, "verkauft": 0.0, "gestohlen": 0, "verscheucht": 0}
 var erster_start := true
@@ -70,6 +74,7 @@ var einstellungen := {
 	"tippen": false,
 	"lautstaerke": 0.8,
 	"musik": 0.6,
+	"zeit_fest": false,
 }
 
 var _speicher_timer := 0.0
@@ -113,6 +118,15 @@ func _process(delta: float) -> void:
 			if zins >= 1.0:
 				verdiene(zins, false)
 				toast.emit("Zinsen: +%s Münzen" % Data.zahl(zins), FARBE_GOLD)
+
+
+func ist_nacht() -> bool:
+	return tageszeit >= 20.0 or tageszeit < 6.0
+
+
+## Abendsonne (17 bis 19 Uhr)
+func ist_abend() -> bool:
+	return tageszeit >= 17.0 and tageszeit < 19.0
 
 
 func _notification(what: int) -> void:
@@ -730,6 +744,7 @@ func speichern() -> void:
 		"ziel_index": ziel_index, "ziel_zaehler": ziel_zaehler,
 		"skills": skills, "sammler": sammler, "sammler_aktiv": sammler_aktiv, "beutel_id": beutel_id,
 		"beutel": beutel, "lager": lager, "helfer": helfer, "posten": posten,
+		"tageszeit": tageszeit, "wetter": wetter, "letzter_regen": letzter_regen, "extra": extra,
 	}
 	if welt and welt.has_method("berg_speichern"):
 		welt.berg_speichern(BERG_PFAD)
@@ -787,6 +802,12 @@ func laden() -> void:
 	posten = {}
 	for k in d.get("posten", {}):
 		posten[str(k)] = true
+	tageszeit = float(d.get("tageszeit", 10.5))
+	wetter = str(d.get("wetter", "klar"))
+	letzter_regen = float(d.get("letzter_regen", -99999.0))
+	extra = d.get("extra", {})
+	if typeof(extra) != TYPE_DICTIONARY:
+		extra = {}
 	_laden_erfolgt = true
 
 
@@ -810,6 +831,10 @@ func zuruecksetzen() -> void:
 	lager = {}
 	helfer = 0
 	posten = {}
+	tageszeit = 10.5
+	wetter = "klar"
+	letzter_regen = -99999.0
+	extra = {}
 	muenzen = 0.0
 	gold = 0
 	mp = 0
