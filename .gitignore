@@ -23,3 +23,9 @@ export/
 
 # === Engine ===
 # Hier den passenden Abschnitt ergänzen, sobald die Engine feststeht.
+# Godot 4
+.godot/
+/android/
+*.translation
+export_presets.cfg
+logs/
