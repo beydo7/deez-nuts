@@ -35,6 +35,17 @@ const BUCKEL := [
 ## Felsstufe, über die der Bach als Wasserfall fällt. [Mitte, flacher Radius, Kantenbreite, Höhe]
 const FELSSTUFE := [Vector2(-61.0, -83.0), 15.2, 1.6, 5.2]
 
+## Ebene Bauplätze außerhalb der Talsohle. [Mitte, Radius, Kratertiefe, Kraterradius]
+const PLATEAUS := [
+	[Vector2(-8.0, -92.0), 8.0, 0.9, 4.6],     # Mondlichtung mit Krater
+	[Vector2(30.0, -78.0), 8.0, 0.0, 0.0],     # Königseiche
+	[Vector2(44.0, -63.0), 3.2, 0.0, 0.0],     # Hochsitz
+	[Vector2(-50.5, 20.5), 10.0, 0.0, 0.0],    # Alt-Haselgrund
+	[Vector2(-56.0, 4.0), 5.5, 0.0, 0.0],      # Heuschober
+	[Vector2(-40.0, 36.0), 4.5, 0.0, 0.0],     # Picknickplatz
+	[Vector2(-17.0, -86.0), 3.5, 0.0, 0.0],    # Hexenring
+]
+
 # --- Bach ----------------------------------------------------------------------
 ## Mittellinie des Bachs von der Quelle bis zum Ausgang. Der dritte Wert ist die Wasserhöhe.
 ## Zwischen Punkt 2 (Kante) und 3 (Becken) fällt der Wasserfall.
@@ -100,6 +111,8 @@ const ORTE := {
 	"huehnerstall": Vector3(15.8, 0, 8.2),
 	"holzlager": Vector3(13.0, 0, 1.8),
 	"apfelbaum": Vector3(-6.0, 0, 18.5),
+	"sperre": Vector3(3.2, 0, 58.0),
+	"hexenring": Vector3(-17.0, 0, -86.0),
 }
 
 ## Baumgruppen in der Talsohle, von Hand gesetzt. [Mitte, Anzahl, Streuung, Art]

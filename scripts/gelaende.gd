@@ -21,6 +21,7 @@ var _bach_hoehe := PackedFloat32Array()
 var _rausch := FastNoiseLite.new()
 var _rausch2 := FastNoiseLite.new()
 var material: ShaderMaterial
+var _plateau_hoehe := {}
 
 
 func _init() -> void:
@@ -118,8 +119,32 @@ func _rastern(a: Vector2, b: Vector2, r: float, f: Callable) -> void:
 				f.call(zi * BREITE + xi, d, t)
 
 
-## Die natürliche Form ohne Bach: Talsohle, Hügel, Buckel, Felsstufe.
+## Die natürliche Form ohne Bach, mit eingeebneten Bauplätzen und dem Krater der Mondlichtung.
 func _natur(x: float, z: float) -> float:
+	var h := _roh(x, z)
+	for i in WeltPlan.PLATEAUS.size():
+		var pl: Array = WeltPlan.PLATEAUS[i]
+		var m: Vector2 = pl[0]
+		var d := Vector2(x, z).distance_to(m)
+		var r: float = pl[1]
+		if d > r + 7.0:
+			continue
+		if not _plateau_hoehe.has(i):
+			_plateau_hoehe[i] = _roh(m.x, m.y)
+		var hc: float = _plateau_hoehe[i]
+		h = lerpf(h, hc, 1.0 - smoothstep(r, r + 7.0, d))
+		var tiefe: float = pl[2]
+		if tiefe > 0.0:
+			var kr: float = pl[3]
+			if d < kr:
+				h -= tiefe * (1.0 - pow(d / kr, 2.0))
+			elif d < kr + 1.6:
+				h += 0.3 * sin((d - kr) / 1.6 * PI)
+	return h
+
+
+## Die Form ohne Bauplätze: Talsohle, Hügel, Buckel, Felsstufe.
+func _roh(x: float, z: float) -> float:
 	var r := WeltPlan.tal_r(x, z)
 	var wellig := _rausch.get_noise_2d(x * 0.013, z * 0.013)
 	var h := WeltPlan.SOHLE

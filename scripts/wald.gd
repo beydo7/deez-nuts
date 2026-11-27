@@ -28,9 +28,9 @@ func _init(g: Gelaende) -> void:
 
 
 func _ready() -> void:
-	for ort in ["wasserfall", "koenigseiche", "mondlichtung", "hochsitz", "siedlung", "picknick", "heuschober", "angelplatz", "feuerstelle", "hoftor", "traktor"]:
+	for ort in ["wasserfall", "koenigseiche", "mondlichtung", "hochsitz", "siedlung", "picknick", "heuschober", "angelplatz", "feuerstelle", "hoftor", "traktor", "sperre", "hexenring"]:
 		var p: Vector3 = WeltPlan.ORTE[ort]
-		_frei.append([Vector2(p.x, p.z), 9.0 if ort in ["mondlichtung", "siedlung", "koenigseiche"] else 6.0])
+		_frei.append([Vector2(p.x, p.z), 10.0 if ort in ["mondlichtung", "siedlung", "koenigseiche"] else (4.0 if ort in ["hochsitz", "hexenring"] else 6.0)])
 	_waldguertel()
 	_baumgruppen()
 	_unterholz()
@@ -46,6 +46,8 @@ func _ready() -> void:
 			"sicht": 0.0 if ist_baum else (70.0 if teile[0].begins_with("wald/Rock") or teile[0].begins_with("wald/Bush") else 45.0),
 		}
 		# KayKit-Felsen sind sehr blau, im Herbstlicht wärmer abtönen
+		if teile[0] in ["natur/log_large.glb", "natur/stump_old.glb"]:
+			optionen["ton"] = Color(0.5, 0.38, 0.3)
 		if teile[0].begins_with("wald/Rock"):
 			optionen["ton"] = Color(1.18, 0.98, 0.76)
 		Streuer.setzen(self, teile[0], _sammlung[schluessel], optionen)

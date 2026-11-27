@@ -515,3 +515,317 @@ static func stumpf(k: Node3D, pos: Vector3, radius: float, hoehe: float) -> void
 	var rinde := Look.holz([Color(0.36, 0.27, 0.2), Color(0.2, 0.14, 0.1)], 14.0, 0.0)
 	Bau.teil(k, Bau.zylinder_mesh(radius * 0.92, radius * 1.12, hoehe, 12), rinde, pos + Vector3(0, hoehe * 0.5, 0))
 	Bau.teil(k, Bau.zylinder_mesh(radius * 0.84, radius * 0.84, 0.01, 12), Look.holz(Look.KIEFER, 16.0, 0.0), pos + Vector3(0, hoehe + 0.002, 0))
+
+
+# --- Etappe 3: Siedlung und Aussicht -------------------------------------------
+static func _heu() -> Material:
+	return Look.putz(Color(0.82, 0.68, 0.3), Color(0.64, 0.5, 0.2), 90.0, 0.0, 1.0)
+
+
+static func _moos() -> Material:
+	return Look.putz(Color(0.3, 0.4, 0.16), Color(0.2, 0.3, 0.12), 60.0, 0.0, 1.0)
+
+
+## Opas Hochsitz: Plattform auf 3,6 m mit Geländer, Dach und Leiter an der Front (+Z).
+static func hochsitz(k: Node3D) -> void:
+	var holz := _alt()
+	var dunkel := _dunkel()
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			Bau.teil(k, Bau.box_mesh(Vector3(0.16, 3.8, 0.16)), dunkel, Vector3(sx * 1.05, 1.8, sz * 1.05), Vector3(sz * -5.0, 0, sx * 5.0))
+			_koll(k, Vector3(0.2, 3.6, 0.2), Vector3(sx * 1.05, 1.8, sz * 1.05))
+			Bau.teil(k, Bau.box_mesh(Vector3(0.1, 2.2, 0.1)), dunkel, Vector3(sx * 0.98, 4.75, sz * 0.98))
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.07, 3.1, 0.07)), holz, Vector3(s * 1.0, 1.9, 0), Vector3(40.0 * s, 0, 0))
+		Bau.teil(k, Bau.box_mesh(Vector3(0.07, 3.1, 0.07)), holz, Vector3(0, 1.9, s * 1.0), Vector3(0, 0, 40.0 * s))
+	Bau.block(k, Vector3(2.3, 0.12, 2.3), Vector3(0, 3.6, 0), Look.holz(Look.ALTHOLZ, 6.0, 0.0, 0.2, true))
+	# Geländer an drei Seiten, vorn eine Lücke für die Leiter
+	for seite in [[Vector3(-1.08, 0, 0), Vector3(0.07, 0.07, 2.2)], [Vector3(1.08, 0, 0), Vector3(0.07, 0.07, 2.2)], [Vector3(0, 0, -1.08), Vector3(2.2, 0.07, 0.07)]]:
+		var p: Vector3 = seite[0]
+		var g: Vector3 = seite[1]
+		Bau.teil(k, Bau.box_mesh(g), holz, p + Vector3(0, 4.6, 0))
+		Bau.teil(k, Bau.box_mesh(g), holz, p + Vector3(0, 4.15, 0))
+		_koll(k, Vector3(maxf(g.x, 0.1), 1.1, maxf(g.z, 0.1)), p + Vector3(0, 4.2, 0))
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.7, 0.07, 0.07)), holz, Vector3(s * 0.73, 4.6, 1.08))
+		_koll(k, Vector3(0.7, 1.1, 0.1), Vector3(s * 0.73, 4.2, 1.08))
+	Bau.teil(k, Bau.box_mesh(Vector3(2.8, 0.07, 1.6)), _ziegel(), Vector3(0, 6.05, 0.62), Vector3(24, 0, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(2.8, 0.07, 1.6)), _ziegel(), Vector3(0, 6.05, -0.62), Vector3(-24, 0, 0))
+	# Leiter
+	var leiter_k := Node3D.new()
+	leiter_k.name = "Leiter"
+	leiter_k.position = Vector3(0, 0, 1.75)
+	leiter_k.rotation_degrees.x = -9
+	k.add_child(leiter_k)
+	for s in [-1.0, 1.0]:
+		Bau.teil(leiter_k, Bau.box_mesh(Vector3(0.06, 4.3, 0.07)), holz, Vector3(s * 0.26, 2.15, 0))
+	for i in 12:
+		Bau.teil(leiter_k, Bau.box_mesh(Vector3(0.52, 0.045, 0.045)), holz, Vector3(0, 0.3 + i * 0.32, 0))
+	# Opas Fernglas-Hocker und eine Thermoskanne
+	stumpf(k, Vector3(-0.6, 3.66, -0.6), 0.2, 0.4)
+	Bau.teil(k, Bau.zylinder_mesh(0.045, 0.05, 0.26, 10), Look.lackiert(Color(0.2, 0.36, 0.28), 0.5), Vector3(0.75, 3.79, -0.8))
+
+
+## Eingefallene Köhlerhütte, 5 x 4 m. Tür an der Front (+Z).
+static func koehlerhuette(k: Node3D) -> void:
+	var stein := _stein()
+	var holz := _alt()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1903
+	# Mauern in Stücken unterschiedlicher Höhe (hinten und links hoch, rechts eingestürzt)
+	var stuecke := [
+		[Vector3(-2.4, 0, 0), Vector3(0.35, 2.2, 4.0)], [Vector3(-1.2, 0, -1.85), Vector3(2.2, 2.4, 0.35)], [Vector3(1.2, 0, -1.85), Vector3(2.2, 1.5, 0.35)],
+		[Vector3(2.4, 0, -1.0), Vector3(0.35, 0.9, 1.9)], [Vector3(2.4, 0, 1.2), Vector3(0.35, 0.45, 1.4)],
+		[Vector3(-1.6, 0, 1.85), Vector3(1.5, 1.9, 0.35)], [Vector3(1.5, 0, 1.85), Vector3(1.6, 1.1, 0.35)]]
+	for st in stuecke:
+		var g: Vector3 = st[1]
+		var p: Vector3 = st[0]
+		Bau.block(k, g, p + Vector3(0, g.y * 0.5, 0), stein)
+		Bau.teil(k, Bau.box_mesh(Vector3(g.x + 0.04, 0.1, g.z + 0.04)), _moos(), p + Vector3(0, g.y + 0.03, 0))
+	# Türrahmen steht noch
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.14, 2.0, 0.14)), holz, Vector3(-0.35 + s * 0.5, 1.0, 1.85), Vector3(0, 0, s * 2.0))
+	Bau.teil(k, Bau.box_mesh(Vector3(1.25, 0.14, 0.16)), holz, Vector3(-0.35, 2.05, 1.85), Vector3(0, 0, -3))
+	# Halbes Dach: links liegt es noch auf, rechts ist es heruntergerutscht
+	Bau.teil(k, Bau.box_mesh(Vector3(2.9, 0.1, 4.4)), _ziegel(), Vector3(-1.1, 2.75, 0), Vector3(0, 0, 24))
+	Bau.teil(k, Bau.box_mesh(Vector3(2.6, 0.1, 3.4)), _ziegel(), Vector3(1.9, 0.75, 0.2), Vector3(6, 8, -32))
+	for i in 4:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.12, 0.12, 3.4)), holz, Vector3(-2.0 + i * 0.75, 2.3 + i * 0.3, 0), Vector3(rng.randf_range(-3, 3), 0, 24))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.12, 0.12, 2.6)), holz, Vector3(0.6, 0.35, 0.4), Vector3(14, 50, 0))
+	# Schornstein und Ofen
+	Bau.block(k, Vector3(0.7, 3.3, 0.7), Vector3(-1.9, 1.65, -1.4), stein)
+	Bau.teil(k, Bau.zylinder_mesh(0.3, 0.34, 0.7, 12), Look.metall(Color(0.22, 0.2, 0.19), 0.7), Vector3(-1.1, 0.35, -1.2))
+	Bau.teil(k, Bau.zylinder_mesh(0.07, 0.07, 1.1, 8), Look.metall(Color(0.22, 0.2, 0.19), 0.7), Vector3(-1.1, 1.2, -1.2), Vector3(0, 0, 12))
+	# Bewuchs innen
+	for i in 6:
+		Modelle.setze(k, "wald/Grass_1_C_Color1.gltf", Vector3(rng.randf_range(-1.8, 1.8), 0, rng.randf_range(-1.3, 1.3)), rng.randf() * 360.0, rng.randf_range(0.7, 1.1))
+	Modelle.setze(k, "wald/Bush_1_C_Color1.gltf", Vector3(1.3, 0, -1.0), 0.0, 1.0)
+	Modelle.setze(k, "natur/mushroom_tanGroup.glb", Vector3(-1.8, 0, 0.9), 40.0, 1.6)
+
+
+## Verfallener Schuppen, 4 x 3 m, windschief.
+static func schuppen(k: Node3D) -> void:
+	var holz := _alt()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 44
+	var schief := Node3D.new()
+	schief.rotation_degrees = Vector3(0, 0, 7)
+	k.add_child(schief)
+	for sx in [-1.9, 1.9]:
+		for sz in [-1.4, 1.4]:
+			Bau.teil(schief, Bau.box_mesh(Vector3(0.14, 2.6, 0.14)), _dunkel(), Vector3(sx, 1.3, sz))
+	for i in 16:
+		if i in [3, 4, 9, 13]:
+			continue
+		var x := -1.8 + i * 0.24
+		Bau.teil(schief, Bau.box_mesh(Vector3(0.2, 2.3 - rng.randf() * 0.3, 0.03)), holz, Vector3(x, 1.15, -1.4), Vector3(0, 0, rng.randf_range(-3, 3)))
+	for i in 12:
+		if i in [2, 7, 8]:
+			continue
+		for sx in [-1.9, 1.9]:
+			if sx > 0 and i > 8:
+				continue
+			Bau.teil(schief, Bau.box_mesh(Vector3(0.03, 2.3 - rng.randf() * 0.4, 0.2)), holz, Vector3(sx, 1.15, -1.3 + i * 0.24), Vector3(rng.randf_range(-3, 3), 0, 0))
+	Bau.teil(schief, Bau.box_mesh(Vector3(4.4, 0.08, 3.4)), holz, Vector3(0, 2.62, 0), Vector3(-10, 0, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.2, 2.1, 0.03)), holz, Vector3(1.2, 0.03, 1.9), Vector3(88, 20, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.2, 1.8, 0.03)), holz, Vector3(0.4, 0.05, 2.2), Vector3(90, -35, 0))
+	_koll(k, Vector3(4.0, 2.4, 0.15), Vector3(0.15, 1.2, -1.4))
+	_koll(k, Vector3(0.15, 2.4, 3.0), Vector3(-1.75, 1.2, 0))
+	_koll(k, Vector3(0.15, 2.4, 2.0), Vector3(2.05, 1.2, -0.5))
+	# Was noch drin steht: ein Fass, Kisten, Spinnweben ohne Spinnen
+	Modelle.setze(k, "kueche/barrel.glb", Vector3(-1.1, 0, -0.7), 0.0, 1.2)
+	Bau.teil(k, Bau.box_mesh(Vector3(0.6, 0.45, 0.5)), Look.holz(Look.KIEFER, 8.0, 0.0), Vector3(0.6, 0.23, -0.9), Vector3(0, 15, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.5, 0.35, 0.45)), Look.holz(Look.KIEFER, 8.0, 0.0), Vector3(0.65, 0.62, -0.92), Vector3(0, -10, 0))
+
+
+## Kleines altes Lagerhaus, 4 x 3 x 3,2 m, Tür vernagelt. An der rechten Seite sitzt ein loses Brett.
+static func lagerhaus(k: Node3D) -> void:
+	var holz := _alt()
+	var dunkel := _dunkel()
+	Bau.block(k, Vector3(4.0, 2.4, 3.0), Vector3(0, 1.2, 0), Look.holz(Look.ALTHOLZ, 5.0, 0.0, 0.22, false))
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(4.5, 0.09, 2.1)), _ziegel(), Vector3(0, 2.85, s * 0.85), Vector3(s * 30.0, 0, 0))
+		Bau.teil(k, Bau.box_mesh(Vector3(0.16, 2.5, 0.16)), dunkel, Vector3(s * 2.0, 1.25, 1.5))
+		Bau.teil(k, Bau.box_mesh(Vector3(0.16, 2.5, 0.16)), dunkel, Vector3(s * 2.0, 1.25, -1.5))
+	Bau.teil(k, Bau.box_mesh(Vector3(4.0, 0.9, 0.08)), holz, Vector3(0, 2.8, 1.46), Vector3.ZERO, Vector3(1, 1, 1))
+	Bau.teil(k, Bau.box_mesh(Vector3(4.0, 0.9, 0.08)), holz, Vector3(0, 2.8, -1.46))
+	# Vernagelte Tür
+	Bau.teil(k, Bau.box_mesh(Vector3(1.1, 1.9, 0.06)), dunkel, Vector3(0, 0.95, 1.51))
+	Bau.teil(k, Bau.box_mesh(Vector3(1.5, 0.14, 0.04)), holz, Vector3(0, 1.0, 1.56), Vector3(0, 0, 32))
+	Bau.teil(k, Bau.box_mesh(Vector3(1.5, 0.14, 0.04)), holz, Vector3(0, 1.0, 1.57), Vector3(0, 0, -30))
+	Bau.holzschild(k, "LAGER 3", Vector3(0, 2.15, 1.53), Vector2(0.8, 0.2), Vector3(0, 0, -4), 70)
+	# Nische hinter dem losen Brett (rechte Seite, +X)
+	Bau.teil(k, Bau.box_mesh(Vector3(0.04, 0.7, 0.5)), Bau.mat(Color(0.04, 0.03, 0.03)), Vector3(2.0, 0.55, -0.4))
+	var brett := Node3D.new()
+	brett.name = "Loses_Brett"
+	brett.position = Vector3(2.04, 1.0, -0.4)
+	brett.rotation_degrees.x = 4
+	k.add_child(brett)
+	Bau.teil(brett, Bau.box_mesh(Vector3(0.04, 1.3, 0.56)), Look.holz(Look.KIEFER, 7.0, 0.0), Vector3(0, -0.5, 0))
+	Bau.teil(brett, Bau.kugel_mesh(0.018, false, 6), Look.metall(Color(0.3, 0.3, 0.3), 0.5), Vector3(0.025, -0.03, 0))
+
+
+## Leiterwagen mit gebrochener Achse und leeren Körben.
+static func holzwagen(k: Node3D) -> void:
+	var holz := _alt()
+	var dunkel := _dunkel()
+	var wagen := Node3D.new()
+	wagen.rotation_degrees = Vector3(0, 0, -11)
+	wagen.position = Vector3(0, 0.05, 0)
+	k.add_child(wagen)
+	Bau.teil(wagen, Bau.box_mesh(Vector3(1.3, 0.08, 2.8)), holz, Vector3(0, 0.7, 0))
+	for s in [-1.0, 1.0]:
+		Bau.teil(wagen, Bau.box_mesh(Vector3(0.06, 0.06, 2.9)), dunkel, Vector3(s * 0.66, 1.2, 0))
+		for i in 7:
+			Bau.teil(wagen, Bau.box_mesh(Vector3(0.04, 0.5, 0.04)), holz, Vector3(s * 0.66, 0.95, -1.3 + i * 0.43), Vector3(0, 0, s * -8.0))
+	Bau.teil(wagen, Bau.box_mesh(Vector3(0.07, 0.07, 1.9)), dunkel, Vector3(0, 0.62, 2.2), Vector3(-14, 0, 0))
+	var rad := func(pos: Vector3, dreh: Vector3, eltern: Node3D) -> void:
+		var r := Node3D.new()
+		r.position = pos
+		r.rotation_degrees = dreh
+		eltern.add_child(r)
+		var reif := TorusMesh.new()
+		reif.inner_radius = 0.43
+		reif.outer_radius = 0.5
+		Bau.teil(r, reif, dunkel, Vector3.ZERO, Vector3(0, 0, 90))
+		for j in 4:
+			Bau.teil(r, Bau.box_mesh(Vector3(0.04, 0.9, 0.05)), holz, Vector3.ZERO, Vector3(j * 45.0, 0, 0))
+	rad.call(Vector3(-0.8, 0.52, -0.9), Vector3.ZERO, wagen)
+	rad.call(Vector3(-0.8, 0.52, 0.9), Vector3.ZERO, wagen)
+	rad.call(Vector3(0.8, 0.52, -0.9), Vector3.ZERO, wagen)
+	rad.call(Vector3(1.5, 0.08, 1.3), Vector3(0, 30, 82), k)
+	var korb := Look.holz(Look.KIEFER, 14.0, 0.0)
+	for kp in [Vector3(-0.25, 0.9, -0.8), Vector3(0.3, 0.9, -0.2), Vector3(-0.2, 0.9, 0.5)]:
+		Bau.teil(wagen, Bau.zylinder_mesh(0.27, 0.2, 0.32, 12), korb, kp)
+		Bau.teil(wagen, Bau.zylinder_mesh(0.24, 0.24, 0.01, 12), Bau.mat(Color(0.12, 0.08, 0.05)), kp + Vector3(0, 0.15, 0))
+	Bau.teil(k, Bau.zylinder_mesh(0.27, 0.2, 0.32, 12), korb, Vector3(1.3, 0.14, -0.5), Vector3(80, 30, 0))
+	_koll(k, Vector3(1.5, 1.2, 2.9), Vector3(0, 0.6, 0))
+
+
+## Wegweiser mit drei Schildern. texte = [[Text, Drehung in Grad], ...]
+static func wegweiser(k: Node3D, texte: Array) -> void:
+	Bau.teil(k, Bau.box_mesh(Vector3(0.12, 2.5, 0.12)), _dunkel(), Vector3(0, 1.25, 0), Vector3(0, 0, -3))
+	for i in texte.size():
+		var s := Bau.holzschild(k, str(texte[i][0]), Vector3(0, 2.25 - i * 0.36, 0), Vector2(1.25, 0.26), Vector3(0, float(texte[i][1]), (i - 1) * 3.0), 62)
+		s.position += s.transform.basis.x * 0.45 + s.transform.basis.z * 0.07
+	_koll(k, Vector3(0.16, 2.4, 0.16), Vector3(0, 1.2, 0))
+
+
+## Heuschober: Dach auf sechs Pfosten über einem großen Heuhaufen, Rückwand (-Z) aus Brettern mit Spalt.
+static func heuschober(k: Node3D) -> void:
+	var dunkel := _dunkel()
+	var holz := _alt()
+	for sx in [-2.4, 0.0, 2.4]:
+		for sz in [-1.9, 1.9]:
+			Bau.teil(k, Bau.box_mesh(Vector3(0.18, 3.0, 0.18)), dunkel, Vector3(sx, 1.5, sz))
+			_koll(k, Vector3(0.2, 3.0, 0.2), Vector3(sx, 1.5, sz))
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(5.6, 0.1, 2.7)), _heu(), Vector3(0, 3.55, s * 1.1), Vector3(s * 28.0, 0, 0))
+		Bau.teil(k, Bau.box_mesh(Vector3(5.2, 0.14, 0.14)), dunkel, Vector3(0, 2.95, s * 1.9))
+	Bau.teil(k, Bau.box_mesh(Vector3(5.7, 0.12, 0.12)), dunkel, Vector3(0, 4.16, 0))
+	# Bretterwand hinten, das dritte Brett von links fehlt halb: dort fällt abends Licht herein
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 17
+	for i in 20:
+		var x := -2.3 + i * 0.242
+		if i == 13:
+			Bau.teil(k, Bau.box_mesh(Vector3(0.22, 1.1, 0.03)), holz, Vector3(x, 0.55, -1.95))
+			continue
+		Bau.teil(k, Bau.box_mesh(Vector3(0.22, 2.7 - rng.randf() * 0.25, 0.03)), holz, Vector3(x, 1.35, -1.95), Vector3(0, 0, rng.randf_range(-1.5, 1.5)))
+	_koll(k, Vector3(5.0, 2.8, 0.1), Vector3(0, 1.4, -1.95))
+	# Der Heuhaufen
+	var heu := _heu()
+	for h in [[Vector3(0, 0, -0.2), Vector3(2.1, 1.7, 1.5)], [Vector3(-1.1, 0, 0.3), Vector3(1.3, 1.1, 1.2)], [Vector3(1.2, 0, 0.2), Vector3(1.2, 1.25, 1.1)], [Vector3(0.2, 0, 0.9), Vector3(1.4, 0.7, 0.9)]]:
+		Bau.teil(k, Bau.kugel_mesh(1.0, true, 16), heu, h[0], Vector3(0, rng.randf() * 90.0, 0), h[1])
+	_koll(k, Vector3(3.4, 1.2, 2.2), Vector3(0, 0.6, 0.0))
+	# Heugabel und ein vergessener Rechen
+	var gabel := Node3D.new()
+	gabel.position = Vector3(2.15, 0, 1.2)
+	gabel.rotation_degrees = Vector3(-14, 0, 10)
+	k.add_child(gabel)
+	Bau.teil(gabel, Bau.zylinder_mesh(0.022, 0.022, 1.7, 8), Look.holz(Look.EICHE, 9.0, 0.1), Vector3(0, 0.85, 0))
+	for i in 3:
+		Bau.teil(gabel, Bau.zylinder_mesh(0.008, 0.008, 0.32, 6), Look.metall(Color(0.35, 0.35, 0.37), 0.5), Vector3(-0.07 + i * 0.07, 1.85, 0))
+	Bau.teil(gabel, Bau.box_mesh(Vector3(0.18, 0.02, 0.02)), Look.metall(Color(0.35, 0.35, 0.37), 0.5), Vector3(0, 1.7, 0))
+
+
+## Picknickplatz: Tisch mit Bänken, gedeckt für vier und vor langer Zeit verlassen.
+static func picknick(k: Node3D) -> void:
+	var holz := _alt()
+	Bau.block(k, Vector3(1.9, 0.07, 0.85), Vector3(0, 0.76, 0), holz)
+	for s in [-1.0, 1.0]:
+		Bau.block(k, Vector3(1.9, 0.06, 0.3), Vector3(0, 0.45, s * 0.75), holz)
+		for x in [-0.75, 0.75]:
+			Bau.teil(k, Bau.box_mesh(Vector3(0.08, 0.95, 0.08)), _dunkel(), Vector3(x, 0.4, s * 0.42), Vector3(s * 32.0, 0, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(1.3, 0.012, 0.7)), Look.stoff(Color(0.7, 0.2, 0.18)), Vector3(-0.1, 0.801, 0), Vector3(0, 4, 0))
+	for p in [Vector3(-0.55, 0.81, 0.2), Vector3(0.3, 0.81, 0.22), Vector3(-0.5, 0.81, -0.22), Vector3(0.35, 0.81, -0.2)]:
+		Modelle.setze(k, "kueche/plate.glb", p, 0.0, 0.26)
+	var becher := Modelle.setze(k, "kueche/mug.glb", Vector3(0.05, 0.84, 0.05), 40.0, 0.3)
+	becher.rotation_degrees.z = 90
+	Modelle.setze(k, "kueche/mug.glb", Vector3(-0.75, 0.8, 0.0), 0.0, 0.3)
+	# Hut auf der Bank, Korb im Gras
+	var filz := Look.stoff(Color(0.82, 0.74, 0.5))
+	Bau.teil(k, Bau.zylinder_mesh(0.2, 0.21, 0.02, 14), filz, Vector3(0.6, 0.49, 0.75))
+	Bau.teil(k, Bau.zylinder_mesh(0.1, 0.11, 0.1, 12), filz, Vector3(0.6, 0.55, 0.75))
+	Bau.teil(k, Bau.zylinder_mesh(0.105, 0.115, 0.03, 12), Look.stoff(Color(0.5, 0.15, 0.12)), Vector3(0.6, 0.515, 0.75))
+	Bau.teil(k, Bau.zylinder_mesh(0.26, 0.2, 0.28, 12), Look.holz(Look.KIEFER, 14.0, 0.0), Vector3(-1.3, 0.14, 0.9), Vector3(70, 20, 0))
+	# Krümelspur: jemand Kleines hat den Kuchen gestohlen
+	var kruemel := Bau.mat(Color(0.86, 0.72, 0.45))
+	for i in 14:
+		Bau.teil(k, Bau.kugel_mesh(0.018, false, 5), kruemel, Vector3(0.9 + i * 0.42, 0.015, -0.3 - i * 0.33 + sin(i * 1.3) * 0.15))
+
+
+## Angelplatz: kurzer Steg (nach +Z ins Wasser), Opas Angelstuhl, Eimer und Rute.
+static func angelplatz(k: Node3D) -> void:
+	var holz := _alt()
+	var dunkel := _dunkel()
+	for i in 12:
+		Bau.teil(k, Bau.box_mesh(Vector3(1.3, 0.05, 0.2)), holz, Vector3(0, 0.22, -0.2 + i * 0.235), Vector3(0, (i % 3 - 1) * 1.5, 0))
+	_koll(k, Vector3(1.3, 0.1, 2.9), Vector3(0, 0.2, 1.1))
+	for s in [-1.0, 1.0]:
+		for z in [0.9, 2.4]:
+			Bau.teil(k, Bau.zylinder_mesh(0.06, 0.07, 1.6, 8), dunkel, Vector3(s * 0.62, -0.3, z))
+	# Klappstuhl
+	var stuhl := Node3D.new()
+	stuhl.position = Vector3(-0.2, 0.25, 1.6)
+	stuhl.rotation_degrees.y = -12
+	k.add_child(stuhl)
+	var tuch := Look.stoff(Color(0.2, 0.36, 0.5))
+	Bau.teil(stuhl, Bau.box_mesh(Vector3(0.45, 0.02, 0.4)), tuch, Vector3(0, 0.4, 0))
+	Bau.teil(stuhl, Bau.box_mesh(Vector3(0.45, 0.36, 0.02)), tuch, Vector3(0, 0.68, -0.22), Vector3(-10, 0, 0))
+	for s in [-1.0, 1.0]:
+		Bau.teil(stuhl, Bau.box_mesh(Vector3(0.03, 0.6, 0.03)), dunkel, Vector3(s * 0.22, 0.22, 0), Vector3(24, 0, 0))
+		Bau.teil(stuhl, Bau.box_mesh(Vector3(0.03, 0.95, 0.03)), dunkel, Vector3(s * 0.22, 0.42, -0.05), Vector3(-22, 0, 0))
+	# Eimer, Rute auf Astgabel
+	Bau.teil(k, Bau.zylinder_mesh(0.15, 0.12, 0.25, 12), Look.metall(Color(0.55, 0.57, 0.6), 0.45), Vector3(0.4, 0.37, 1.4))
+	Bau.teil(k, Bau.zylinder_mesh(0.13, 0.13, 0.01, 12), Bau.mat(Color(0.08, 0.16, 0.18), 0.1), Vector3(0.4, 0.46, 1.4))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.04, 0.7, 0.04)), dunkel, Vector3(0.25, 0.55, 2.45))
+	Bau.teil(k, Bau.zylinder_mesh(0.008, 0.016, 2.6, 6), Look.holz(Look.KIEFER, 12.0, 0.2), Vector3(0.25, 1.25, 3.1), Vector3(62, 0, 0))
+	Bau.teil(k, Bau.zylinder_mesh(0.002, 0.002, 2.3, 4), Bau.mat(Color(0.9, 0.9, 0.9)), Vector3(0.25, 0.72, 4.25))
+	Bau.teil(k, Bau.kugel_mesh(0.035, false, 8), Look.lackiert(Color(0.85, 0.15, 0.1), 0.6), Vector3(0.25, -0.4, 4.25))
+	for i in 5:
+		Modelle.setze(k, "wald/Grass_2_C_Color1.gltf", Vector3(-1.2 + (i % 2) * 2.3, -0.1, 1.4 + i * 0.5), i * 70.0, 1.2)
+
+
+## Der Südausgang ist gesperrt: Schild, dahinter ein umgestürzter Baum quer über dem Weg.
+static func sperre(k: Node3D) -> void:
+	var dunkel := _dunkel()
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.1, 1.5, 0.1)), dunkel, Vector3(s * 0.8, 0.75, -1.6), Vector3(0, 0, s * 3.0))
+	var schild := Bau.holzschild(k, "GESPERRT", Vector3(0, 1.2, -1.62), Vector2(1.8, 0.4), Vector3(0, 180, -2), 120)
+	schild.name = "Schild"
+	Bau.holzschild(k, "Baum liegt quer. Seit 2011. – Opa", Vector3(0, 0.8, -1.62), Vector2(1.8, 0.2), Vector3(0, 180, 1), 48)
+	var rinde := Look.holz([Color(0.36, 0.27, 0.2), Color(0.2, 0.14, 0.1)], 14.0, 0.0)
+	Bau.teil(k, Bau.zylinder_mesh(0.42, 0.55, 9.0, 14), rinde, Vector3(0.3, 0.5, 0.4), Vector3(0, 12, 86))
+	_koll(k, Vector3(9.0, 1.2, 1.0), Vector3(0.3, 0.6, 0.4), Vector3(0, 12, 0))
+	Bau.teil(k, Bau.kugel_mesh(1.0, false, 12), Look.putz(Color(0.3, 0.22, 0.15), Color(0.2, 0.15, 0.1), 30.0), Vector3(4.9, 0.6, -0.55), Vector3.ZERO, Vector3(0.5, 1.5, 1.5))
+	for i in 3:
+		Bau.teil(k, Bau.zylinder_mesh(0.05, 0.12, 2.2, 8), rinde, Vector3(-2.0 - i * 0.9, 1.2, 0.9 + i * 0.1), Vector3(30 + i * 15, 12, 30))
+	Bau.teil(k, _moos_fleck(), _moos(), Vector3(0.3, 0.86, 0.4), Vector3(0, 12, 0), Vector3(1.6, 0.12, 0.4))
+	# Eichhörnchen-Nest in der Astgabel
+	Bau.teil(k, Bau.kugel_mesh(0.3, false, 10), Look.putz(Color(0.45, 0.34, 0.2), Color(0.3, 0.22, 0.12), 120.0), Vector3(-2.3, 1.0, 0.9), Vector3.ZERO, Vector3(1, 0.7, 1))
+	Bau.teil(k, Bau.kugel_mesh(0.12, false, 8), Bau.mat(Color(0.05, 0.04, 0.03)), Vector3(-2.3, 1.02, 1.12))
+
+
+static func _moos_fleck() -> Mesh:
+	return Bau.kugel_mesh(1.0, false, 10)

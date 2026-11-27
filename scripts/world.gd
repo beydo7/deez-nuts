@@ -235,6 +235,7 @@ func _hof_und_berg() -> void:
 			berg.an_rest_anpassen(Game.berg_rest())
 	add_child(berg)
 	_anwesen(hof)
+	_siedlung(hof)
 	_grashalme(hof)
 	_hof_ausstatten(hof)
 	# Schild mit dem Zählerstand am Weg zum Berg
@@ -848,6 +849,53 @@ func _garten(hof: Node3D) -> void:
 	hof.add_child(stamm)
 	Ersatz._koll(stamm, Vector3(0.6, 3.0, 0.6), Vector3(0, 1.5, 0))
 	Modelle.platz(hof, "leiter_apfelbaum", baum_pos + Vector3(0.15, 0, 1.15), 0.0, Ersatz.leiter)
+
+
+# =============================================================================
+# Alt-Haselgrund, Picknickplatz, Heuschober, Angelplatz, Hochsitz (Etappe 3)
+# =============================================================================
+func _siedlung(hof: Node3D) -> void:
+	var g := gelaende
+	var o := WeltPlan.ORTE
+	Modelle.platz(hof, "koehlerhuette_ruine", g.position(-53.0, 23.0), 115.0, Ersatz.koehlerhuette)
+	Modelle.platz(hof, "schuppen_ruine", g.position(-46.5, 26.5), -25.0, Ersatz.schuppen)
+	var lager := Modelle.platz(hof, "lagerhaus_alt", g.position(-56.0, 15.0), 70.0, Ersatz.lagerhaus)
+	var brett: Node3D = lager.find_child("Loses_Brett", true, false)
+	if brett:
+		var bi := Interaktiv.erzeuge(lager, Vector3(0.3, 1.2, 0.7), Vector3(2.1, 0.6, -0.4), "Loses Brett zur Seite schieben", func(_s): pass)
+		bi.aktion = func(_s):
+			Sfx.spiele("knarzen", -6.0, 0.8)
+			var tw := create_tween()
+			tw.tween_property(brett, "rotation_degrees:x", 62.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			bi.queue_free()
+	Modelle.platz(hof, "holzwagen_kaputt", g.position(-45.0, 15.6), 65.0, Ersatz.holzwagen)
+	Modelle.platz(hof, "wegweiser", g.position(-35.5, 15.8), 0.0, func(k: Node3D):
+		Ersatz.wegweiser(k, [["Alt-Haselgrund 0,3 km", 200.0], ["Stadt 14 km", 20.0], ["Mond 384.400 km", 95.0]]))
+	Modelle.platz(hof, "heuschober", g.position(o.heuschober.x, o.heuschober.z), 90.0, Ersatz.heuschober)
+	Modelle.platz(hof, "picknick", g.position(o.picknick.x, o.picknick.z), 30.0, Ersatz.picknick)
+	Modelle.platz(hof, "sperre", g.position(o.sperre.x, o.sperre.z), 0.0, Ersatz.sperre)
+	# Angelplatz: der Steg zeigt vom Ostufer ins Wasser
+	var bach_a: Vector3 = WeltPlan.BACH[5]
+	var bach_b: Vector3 = WeltPlan.BACH[6]
+	var mitte := bach_a.lerp(bach_b, 0.5)
+	var lauf := Vector3(bach_b.x - bach_a.x, 0, bach_b.z - bach_a.z).normalized()
+	var ufer := Vector3(lauf.z, 0, -lauf.x)
+	var steg := mitte + ufer * 3.3
+	Modelle.platz(hof, "angelplatz", Vector3(steg.x, g.hoehe_bei(steg.x, steg.z) - 0.1, steg.z), rad_to_deg(atan2(-ufer.x, -ufer.z)), Ersatz.angelplatz)
+	# Hochsitz: Front und Leiter zeigen zum Berg
+	var hp := g.position(o.hochsitz.x, o.hochsitz.z)
+	var zum_berg := Vector3(Nussberg.MITTE.x - hp.x, 0, Nussberg.MITTE.z - hp.z).normalized()
+	var hochsitz := Modelle.platz(hof, "hochsitz", hp, rad_to_deg(atan2(zum_berg.x, zum_berg.z)), Ersatz.hochsitz)
+	var oben := hp + Vector3(0, 3.75, 0) + zum_berg * 0.3
+	var unten := g.position(hp.x + zum_berg.x * 2.8, hp.z + zum_berg.z * 2.8) + Vector3(0, 0.1, 0)
+	Interaktiv.erzeuge(hochsitz, Vector3(0.9, 2.2, 0.5), Vector3(0, 1.2, 1.9), "Leiter hochklettern", func(sp):
+		Sfx.variante("footstep_wood", -8.0, 0.9)
+		sp.velocity = Vector3.ZERO
+		sp.global_position = oben)
+	Interaktiv.erzeuge(hochsitz, Vector3(0.8, 0.5, 0.4), Vector3(0, 3.95, 1.2), "Leiter hinunterklettern", func(sp):
+		Sfx.variante("footstep_wood", -8.0, 0.9)
+		sp.velocity = Vector3.ZERO
+		sp.global_position = unten)
 
 
 # =============================================================================

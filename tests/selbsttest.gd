@@ -29,6 +29,7 @@ func _ready() -> void:
 	welt.spieler.gesperrt = false
 	await _tal()
 	await _anwesen()
+	await _siedlung()
 	await _berg_und_sammeln()
 	await _abliefern()
 	await _knacken()
@@ -146,6 +147,53 @@ func _anwesen() -> void:
 			await warte(0.1)
 	pruefe(welt.find_child("PlaneMaschine", true, false) != null, "Opas Maschine unter der Plane steht in der Werkstatt")
 	s.gesperrt = false
+	s.global_position = Vector3(0.15, 0.05, -1.0)
+	await warte(0.3)
+
+
+func _siedlung() -> void:
+	print("-- Siedlung und Aussicht")
+	var g: Gelaende = welt.gelaende
+	var s: Spieler = welt.spieler
+	for m in ["koehlerhuette_ruine", "schuppen_ruine", "lagerhaus_alt", "holzwagen_kaputt", "wegweiser", "heuschober", "picknick", "sperre", "angelplatz", "hochsitz"]:
+		var k: Node = welt.find_child(m, true, false)
+		pruefe(Modelle.plaetze.has(m) and k != null and k.get_child_count() > 0, "Modellplatz %s steht" % m)
+	# Bauplätze sind eben
+	for ort in ["siedlung", "heuschober", "picknick", "koenigseiche", "hochsitz"]:
+		var o: Vector3 = WeltPlan.ORTE[ort]
+		pruefe(g.steigung(o.x, o.z) < 0.08, "Bauplatz %s ist eben" % ort)
+	var mond: Vector3 = WeltPlan.ORTE.mondlichtung
+	pruefe(g.hoehe_bei(mond.x, mond.z) < g.hoehe_bei(mond.x + 7.0, mond.z) - 0.5, "Mondlichtung hat einen Krater")
+	# Hochsitz: Leiter hoch und wieder runter
+	var hoch: Node = welt.find_child("hochsitz", true, false)
+	var leitern: Array = []
+	for c in hoch.get_children():
+		if c is Interaktiv:
+			leitern.append(c)
+	pruefe(leitern.size() == 2, "Hochsitz hat Leiter hoch und runter")
+	var boden: float = g.hoehe_bei(WeltPlan.ORTE.hochsitz.x, WeltPlan.ORTE.hochsitz.z)
+	leitern[0].aktion.call(s)
+	await warte(0.6)
+	pruefe(s.global_position.y > boden + 3.4 and s.is_on_floor(), "Oben auf dem Hochsitz stehen (%.1f m über dem Boden)" % (s.global_position.y - boden))
+	leitern[1].aktion.call(s)
+	await warte(0.6)
+	pruefe(s.global_position.y < boden + 1.0, "Wieder unten")
+	# Der Steg am Angelplatz trägt
+	var steg: Node3D = welt.find_child("angelplatz", true, false)
+	s.global_position = steg.to_global(Vector3(0, 1.0, 1.9))
+	await warte(0.7)
+	pruefe(s.is_on_floor() and s.global_position.y > -0.3, "Steg am Angelplatz trägt (y %.2f)" % s.global_position.y)
+	# Loses Brett am Lagerhaus
+	var lager: Node = welt.find_child("lagerhaus_alt", true, false)
+	var brett_ia: Interaktiv = null
+	for c in lager.get_children():
+		if c is Interaktiv:
+			brett_ia = c
+	pruefe(brett_ia != null, "Loses Brett ist benutzbar")
+	if brett_ia:
+		brett_ia.aktion.call(s)
+		await warte(0.8)
+		pruefe((lager.find_child("Loses_Brett", true, false) as Node3D).rotation_degrees.x > 50.0, "Brett schwingt zur Seite")
 	s.global_position = Vector3(0.15, 0.05, -1.0)
 	await warte(0.3)
 
