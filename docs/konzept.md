@@ -2,16 +2,17 @@
 
 ## Pitch
 
-Nüsse knacken, bis die Welt aus Nussschalen besteht. Ein Incremental im Stil von Potato Please, aber jeder Knack ist ein kleines Glücksspiel: Bleiben die Kernhälften ganz, gibt es den vollen Wert.
+Hinter Opas Hütte liegt ein Berg aus einer Million Nüssen. Man läuft darauf herum, schaufelt ihn ab, schleppt die Beute zur Hütte und knackt sie dort. Eine Mischung aus Potato Please (Knackbank), Moon Sweepers (sammeln, tragen, abliefern, aufrüsten), How They Built the Pyramids (alles ist physisch und sichtbar) und „1.000.000 Coins“ (ein riesiger Haufen, der sichtbar schrumpft). Kein Horror, kein Prestige-Reset. Ziel: 5 bis 8 Stunden bis der Berg weg ist. Erst allein, Koop später.
 
 ## Kern-Schleife
 
-1. Nuss nehmen
-2. Knacken (Kraft und Timing)
-3. Kern von der Schale trennen und sortieren
-4. Verkaufen
-5. Bessere Werkzeuge, Helfer und Automatisierung kaufen
-6. Mehr und schwerere Nüsse
+1. Am Berg sammeln (Linksklick halten), Werkzeug bestimmt Tempo und Radius
+2. Beutel ist voll, zurück zur Hütte (oder zum nächsten Außenposten)
+3. In den Trichter kippen: sofort Münzen, Nüsse landen im Lager
+4. An der Knackbank knacken: Kerne bringen viel mehr als rohe Nüsse
+5. Kaufen: Sammelwerkzeuge, Beutel, Knackwerkzeuge, Maschinen, Skills
+6. Automatisieren: Sammel-Eichhörnchen, Außenposten mit Förderbändern, Walzenknacker
+7. Der Berg wird kleiner, neue Schichten bringen neue Nusssorten und Ären
 
 ## Ideen-Sammlung
 

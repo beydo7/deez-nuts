@@ -263,6 +263,31 @@ def rutsch():
     return aus
 
 
+def schaufeln():
+    # Kratzen in losen Nüssen + Geklapper
+    x = t(0.22)
+    kratz = bandpass(rauschen(0.22), 1400, 1.2) * np.sin(np.pi * x / 0.22) ** 1.5 * 0.8
+    klapper = np.zeros(len(x))
+    for _ in range(10):
+        s = int(SR * RNG.uniform(0.02, 0.18))
+        k = mix(bandpass(rauschen(0.015), RNG.uniform(700, 1600), 3) * huelle(int(SR * 0.015), 0.0002, 0.004) * 2,
+                ton(RNG.uniform(350, 650), 0.04, 0.0005, 0.01) * 0.5)
+        klapper[s:s + len(k)] += k[: len(klapper) - s] * RNG.uniform(0.4, 1.0)
+    return mix(kratz, klapper)
+
+
+def sog():
+    x = t(0.18)
+    brumm = np.sin(2 * np.pi * 95 * x) * 0.4 + np.sin(2 * np.pi * 190 * x) * 0.2
+    zisch = bandpass(rauschen(0.18), 1800, 0.9)
+    klapper = np.zeros(len(x))
+    for _ in range(4):
+        s = int(SR * RNG.uniform(0.0, 0.15))
+        k = ton(RNG.uniform(900, 1500), 0.03, 0.0005, 0.008) * 0.4
+        klapper[s:s + len(k)] += k[: len(klapper) - s]
+    return mix(brumm + zisch * 0.7, klapper) * np.sin(np.pi * x / 0.18) ** 0.5
+
+
 # --- Geld und Belohnung -----------------------------------------------------------
 def muenze_einzeln(f):
     return mix(ton(f, 0.5, 0.0005, 0.18, (1.0, 0.0, 0.0, 0.0, 0.35)), klick(0.008, 5000) * 0.3)
@@ -546,6 +571,8 @@ def main():
         "hebel": hebel(),
         "rollen": rollen(),
         "rutsch": rutsch(),
+        "schaufeln": schaufeln(),
+        "sog": sog(),
         "stinken": stinken(),
         "warnung": warnung(),
     }

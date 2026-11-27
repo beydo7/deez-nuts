@@ -1,6 +1,6 @@
 # Deez Nuts!
 
-Ein physisches Ego-Incremental über das Knacken von Nüssen, in der Art von Potato Please und How They Built the Pyramids. Vor dir liegt ein Berg aus einer Million Nüssen. Du knackst die ersten mit bloßen Händen und baust dir Schritt für Schritt deine eigene Knackstraße. Die Eichhörnchen aus dem Wald wollen auch etwas abhaben.
+Ein physisches Ego-Incremental über Nüsse, eine Mischung aus Potato Please, Moon Sweepers, How They Built the Pyramids und „1.000.000 Coins“. Hinter Opas Hütte liegt ein Berg aus einer Million Nüssen, auf dem man herumlaufen kann. Du schaufelst ihn Stück für Stück ab: sammeln, im Beutel zur Hütte tragen, in den Trichter kippen, an der Knackbank knacken, aufrüsten. Später sammeln Eichhörnchen für dich, Außenposten mit Förderbändern sparen Wege, und der Berg wird sichtbar kleiner, bis er weg ist.
 
 Gebaut mit [Godot 4.7.2](https://godotengine.org) (GDScript, Forward+, Jolt-Physik). Sprache im Projekt: Deutsch.
 
@@ -21,19 +21,23 @@ Wer das Repo neu klont: Godot 4.7.2 (Standard-Version, nicht .NET) von https://g
 
 ## Steuerung
 
-**Im Raum**
+**Draußen und in der Hütte**
 
 | Taste | Aktion |
 | --- | --- |
 | WASD, Maus | laufen, schauen |
 | Shift / Leertaste | rennen / springen |
-| E | benutzen, nehmen, ablegen, hineinlegen; am Nussknacker: hinsetzen |
+| Linksklick halten (Blick auf den Berg) | Nüsse sammeln |
+| X | Sammelwerkzeug wechseln |
+| E | benutzen, nehmen, ablegen; an der Knackbank: hinsetzen |
 | Rechtsklick (mit etwas in der Hand) | werfen |
 | Q | fallen lassen |
-| R | Hebel ziehen (Nüsse vom Berg) |
-| Tab | Talentbaum |
+| B | Bestellbrett (Laden) |
+| Tab | Opas Notizbuch (Skillbaum) |
 | Esc | Menü, Einstellungen, Speichern |
-| F9 / F10 / F11 | Testhilfen: +5.000 Münzen / +1.000 Nüsse / +5 Meisterpunkte |
+| F9 / F10 / F11 | Testhilfen: +5.000 Münzen / +1.000 Nüsse ins Lager / +50.000 Münzen |
+
+Abliefern geht von selbst: in den gelben Kreis am Trichter (oder an einem Außenposten) laufen. Ist der Beutel voll, zeigt ein Pfeil den Weg.
 
 **An der Knackbank (Nahansicht)**
 
@@ -41,35 +45,32 @@ Wer das Repo neu klont: Godot 4.7.2 (Standard-Version, nicht .NET) von https://g
 | --- | --- |
 | Linksklick halten | zudrücken – loslassen, wenn die Nuss zittert und knistert |
 | Rechtsklick | Schalen in den Eimer wischen (oder Eichhörnchen verjagen) |
-| R | Hebel ziehen |
+| R | Nüsse aus dem Lager holen |
 | Maus | etwas umschauen (z. B. zum Fenster) |
 | E / Esc / S | aufstehen |
 | H | Hilfsring um die Nuss an/aus |
 
 ## Was drin ist
 
-- **Knackbank-Ansicht wie in Potato Please:** Man setzt sich an den Tisch, die Kamera fährt nah heran, die eigenen Hände greifen den Nussknacker. Die nächste Nuss wird automatisch aus der Schale nachgelegt.
-- **Knacken mit Wumms:** Risse wachsen sichtbar über die Schale, die Nuss wird gequetscht und zittert im richtigen Moment, Knarzen wird höher, im Sweet Spot knistert es. Beim Knack: kurzer Einfrier-Moment, Kamerastoß, Splitter, Staub und Funken, ein Stempel „PERFEKT!“. Combo bis +100 % (mit Talent mehr).
-- **Kerne fliegen ins Glas** und liegen dort sichtbar, Stück für Stück. Bruch fliegt in die Bruchschale. Schalen bleiben liegen, bis man sie wegwischt.
-- **Sechs Nusssorten** mit eigener Form und Schale (alles aus Code erzeugt): Haselnuss, Walnuss, Mandel, Pekannuss, Paranuss (Sweet Spot springt), Macadamia (braucht den Schraubstock). Dazu goldene, faule, doppelte und Wurmnüsse.
-- **Fünf Werkzeuge** mit eigenem Modell und eigener Bewegung: Hände, Holz-Hebelpresse, Metall-Hebelpresse, Hammer (halten = ausholen), Schraubstock (Kurbel). Je 10 Upgrade-Stufen.
-- **Verkaufen:** Glas nehmen, zur Verkaufsklappe tragen, dort [E]. Münzen spritzen, der Betrag fliegt in die Kasse.
-- **Maschinen:** Nussrutsche, Großes Glas, Glasdeckel, Katze Mimi, Rohrpost (volles Glas verkauft sich selbst), Tisch-Sieb, Schalenofen, Walzenknacker, Förderband, Eichhörnchen-Laufrad.
-- **Geführter Einstieg:** 7 Ziele bringen einen durch die ersten Minuten, danach zeigt das Spiel immer das nächste lohnende Ziel mit Fortschrittsbalken.
-- **Werkstatt** öffnet sich nach 600 Nüssen (Schicht „Hang“).
-- **Eichhörnchen** mit Gier (je voller das Glas, desto öfter) und Raubzügen ab Ära 2. Verscheuchen mit E, Rechtsklick an der Bank, Würfen oder durch die Katze.
-- **Talentbaum** mit 19 Talenten, im Wald die Wahl zwischen Abwehr und Zähmen.
-- **Meisterpunkte** aus Meilensteinen und Bestellungen. Bestellungen hängen auch an der Pinnwand.
-- **Optik:** prozedurale Shader für Holz, Putz, Nussschalen, Kerne, Gras und Laub, warmes Licht mit Lichtstrahlen durchs Fenster, wiegende Grashalme, ein Berg aus Tausenden Nüssen.
-- **Ton:** über 35 erzeugte Geräusche, gemütliche Musikschleife und Vogelgezwitscher.
-- **Speichern** automatisch alle 30 Sekunden und beim Beenden. **Abspann**, wenn der Berg leer ist.
+- **Der Nussberg:** eine Million Nüsse als begehbares Höhenfeld mit Kollision. Was man wegsammelt, fehlt sichtbar; Hänge rutschen nach. Fünf Schichten (Kuppe, Hang, Kern, Fuß, Grund). Der Zähler hängt fest am Volumen.
+- **Sammeln mit wachsenden Werkzeugen:** bloße Hände, Holzlöffel, Laubharke, Schaufel, Laubsauger, Saugturbine, XXL-Sauger. Jedes hat eigenes Modell, Rate, Radius und Reichweite. Nüsse fliegen sichtbar in den Beutel.
+- **Tragen:** Hosentaschen, Stoffbeutel, Rucksack, Kiepe, Schubkarre, Bollerwagen, Riesensack. Größere Beutel machen etwas langsamer.
+- **Abliefern:** Trichter und Silo an der Hütte, sofort Münzen pro Nuss, die Nüsse landen im Lager. Volles Lager verkauft den Rest roh.
+- **Knacken wie in Potato Please:** Man setzt sich an den Tisch, die Kamera fährt nah heran, die eigenen Hände greifen den Nussknacker. Risse wachsen, die Nuss zittert im richtigen Moment, im Sweet Spot knistert es. Beim Knack: Einfrier-Moment, Kamerastoß, Splitter, „PERFEKT!“. Kerne bringen deutlich mehr als rohe Nüsse.
+- **Sechs Nusssorten:** Haselnuss, Walnuss, Mandel, Pekannuss, Paranuss, Macadamia, dazu goldene, faule, doppelte und Wurmnüsse.
+- **Automatisieren:** Sammel-Eichhörnchen (beliebig viele, mit Halstuch), vier Außenposten mit Förderbändern zum Silo, Nussrutsche, Walzenknacker, Lagerhalle, Katze Mimi, Sieb, Glasdeckel, Rohrpost.
+- **Opas Notizbuch:** Skillbaum mit über 200 Knoten in sieben Pfaden (Sammeln, Tragen, Handel, Knacken, Maschinen, Helfer, Glück) und 21 Schlüssel-Talenten. Verschieben, zoomen, anklicken.
+- **Bestellungen** von Eisdiele, Bäckerei und Co., Meilensteine mit Münzen, geführter Einstieg mit 7 Zielen.
+- **Optik:** prozedurale Shader für Holz, Putz, Nussschalen, Kerne und Gras, dazu Bäume, Büsche, Steine und Pilze aus freien Modell-Paketen (siehe unten). Warmes Herbstlicht.
+- **Ton:** knapp 40 erzeugte Geräusche plus aufgenommene Schritte und Aufpralle (Kenney), Musikschleife, Vogelgezwitscher.
+- **Speichern** automatisch alle 30 Sekunden und beim Beenden, der Berg samt Löchern wird mitgespeichert.
 
 ## Was noch fehlt (bewusst)
 
 - Freies Aufstellen und Verbinden von Maschinen (jetzt feste Plätze)
 - Ära 4 und 5 mit eigenen Räumen, Kokosnuss, Pressen, Dampfhammer, Eichhörnchen-König
-- Blender-Modelle (alles ist noch aus Code gebaut)
-- Koop
+- Eigene Blender-Modelle (Hütte, Maschinen und Nüsse sind noch aus Code gebaut)
+- Koop (der Code ist so angelegt, dass er später dazukommen kann)
 
 Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4dkKBXe7qzwhuc2TQ86Z) und kurz in [`docs/konzept.md`](docs/konzept.md).
 
@@ -80,7 +81,13 @@ Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4
 | `scripts/autoload/data.gd` | Alle Spielwerte: Nüsse, Werkzeuge, Maschinen, Schichten, Talente. **Balancing passiert hier.** |
 | `scripts/autoload/game.gd` | Spielstand, Wirtschaft, Talente, Bestellungen, Speichern |
 | `scripts/autoload/sfx.gd` | Soundeffekte, Musik und Atmo |
-| `scripts/world.gd` | Baut Küche, Werkstatt und Hof, steuert Maschinen, Verkauf und Eichhörnchen |
+| `scripts/world.gd` | Baut Küche, Werkstatt und Hof, Silo, Außenposten und Bänder, steuert Maschinen, Abliefern und Eichhörnchen |
+| `scripts/nussberg.gd` | Der begehbare Nussberg: Höhenfeld, Abbauen, Nachrutschen, Speichern |
+| `scripts/sammelgeraet.gd` | Sammelwerkzeuge und Beutel in der Ego-Ansicht |
+| `scripts/helfer.gd` | Sammel-Eichhörnchen |
+| `scripts/nussflug.gd` | Fliegende Nüsse (Sammeln, Abliefern) |
+| `scripts/modelle.gd` | Lädt die fertigen Modelle aus `assets/` |
+| `scripts/ui/skillbaum.gd` | Opas Notizbuch (Skillbaum-Ansicht) |
 | `scripts/knackstation.gd` | Die Knack-Mechanik und die Werkzeug-Modelle |
 | `scripts/spieler.gd` | Ego-Steuerung, Knackbank-Ansicht, Greifen, Tragen, Werfen, Kamerawackeln |
 | `scripts/hand.gd` | Die Hände mit beweglichen Fingern |
@@ -90,11 +97,22 @@ Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4
 | `scripts/effekte.gd` | Partikel: Splitter, Staub, Funken, Münzen |
 | `shaders/` | Prozedurale Materialien (Holz, Putz, Nuss mit Rissen, Kern, Gras, Laub, Leuchtrand) |
 | `fonts/` | Schrift Fredoka (SIL Open Font License) |
+| `assets/` | Fertige 3D-Modelle (CC0): `wald/` KayKit Forest Nature, `natur/` Kenney Nature Kit, `kueche/` Kenney Food Kit, `rohstoffe/` KayKit Resource Bits |
 | `scripts/items/` | Nüsse und Teile (`item.gd`), Gefäße (`behaelter.gd`) |
 | `scripts/ui/` | HUD, Menüs, Stil |
-| `sounds/` | Soundeffekte, Musik und Atmo, erzeugt mit `tools/generate_sfx.py` |
+| `sounds/` | Soundeffekte, Musik und Atmo, erzeugt mit `tools/generate_sfx.py`; `sounds/kenney/` aufgenommene Geräusche (Kenney Impact/Interface Sounds, CC0) |
 | `tests/` | Selbsttest und automatische Bildschirmfotos |
 
 Selbsttest ohne Fenster: `godot --headless --path . -- --selbsttest`
 
 Bildschirmfotos aller Situationen: `godot --path . -- --selbsttest --bilder=C:/irgendwo`
+
+## Fremde Inhalte
+
+Alle fremden Modelle und Geräusche stehen unter CC0 (gemeinfrei), eine Nennung ist freiwillig, wir machen sie trotzdem gern:
+
+- [Kenney](https://kenney.nl): Nature Kit, Food Kit, Impact Sounds, Interface Sounds
+- [KayKit](https://kaylousberg.itch.io) von Kay Lousberg: Forest Nature Pack, Resource Bits
+- Schrift [Fredoka](https://fonts.google.com/specimen/Fredoka) (SIL Open Font License)
+
+Die Herbstfarben der KayKit-Bäume (`assets/wald/forest_texture_herbst.png`) sind aus der Originaltextur umgefärbt.

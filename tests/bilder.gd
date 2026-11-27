@@ -17,7 +17,70 @@ func _ready() -> void:
 		welt.menues.schliessen()
 	Game.erster_start = false
 	var s: Spieler = welt.spieler
-	# 1: An der Knackbank, Walnuss mitten im Zudrücken
+	var berg: Nussberg = welt.berg
+	# 1: Vor der Hütte, Blick auf den Nussberg
+	_blick(s, Vector3(1.0, 0.05, -6.2), 0.0, 0.05)
+	await _warte(1.2)
+	await _foto("01_hof_berg")
+	# 2: Am Berg mit dem Kochlöffel sammeln
+	Game.sammler["loeffel"] = 0
+	Game.waehle_sammler("loeffel")
+	s.global_position = Vector3(1.0, berg.hoehe_bei(1.0, -11.0) + 0.8, -11.0)
+	await _warte(0.6)
+	_zielen(s, Vector3(1.0, berg.hoehe_bei(1.0, -12.6), -12.6))
+	s.set_meta("test_sammeln", true)
+	await _warte(1.0)
+	await _foto("02_sammeln_loeffel")
+	# 3: Mit der Schaufel, Beutel voll -> Pfeil zur Abgabe
+	Game.sammler["schaufel"] = 0
+	Game.waehle_sammler("schaufel")
+	await _warte(1.0)
+	Game.beutel_hinzu("wal", 7)
+	Game.beutel_hinzu("hasel", 5)
+	await _warte(1.0)
+	await _foto("03_beutel_voll")
+	s.remove_meta("test_sammeln")
+	# 4: Am Silo abliefern
+	_blick(s, welt.ABGABE_POS + Vector3(0.6, 0.1, -3.2), deg_to_rad(170), 0.08)
+	await _warte(0.8)
+	await _foto("04_silo")
+	_blick(s, welt.ABGABE_POS + Vector3(0, 0.1, 0), deg_to_rad(180), -0.05)
+	await _warte(1.0)
+	for i in 6:
+		await get_tree().process_frame
+	await _warte(0.6)
+	for i in 3:
+		await get_tree().process_frame
+	await _foto("04b_abgeliefert")
+	# 5: Laubsauger hoch oben am Berg
+	Game.sammler["turbine"] = 0
+	Game.waehle_sammler("turbine")
+	Game.aera = 4
+	Game.beutel_id = "schubkarre"
+	Game.beutel_geaendert.emit()
+	var oben := Vector3(-2.0, 0, -26.0)
+	s.global_position = Vector3(oben.x, berg.hoehe_bei(oben.x, oben.z) + 0.8, oben.z)
+	await _warte(0.6)
+	_zielen(s, Vector3(-2.0, berg.hoehe_bei(-2.0, -30.0), -30.0))
+	s.set_meta("test_sammeln", true)
+	Game.beutel_hinzu("wal", 260)
+	Game.beutel_hinzu("hasel", 140)
+	await _warte(1.4)
+	await _foto("05_turbine")
+	s.remove_meta("test_sammeln")
+	# 6: Helfer und Außenposten, Blick vom Berg zurück zur Hütte
+	Game.verdiene(3000000, false)
+	for i in 12:
+		Game.kaufe_helfer()
+	for id in ["posten_vorn", "posten_west", "posten_ost"]:
+		Game.kaufe_posten(id)
+	await _warte(6.0)
+	var gipfel := Vector3(1.0, 0, -22.0)
+	_blick(s, Vector3(gipfel.x, berg.hoehe_bei(gipfel.x, gipfel.z) + 0.5, gipfel.z), deg_to_rad(180), -0.32)
+	await _warte(1.0)
+	await _foto("06_helfer_posten")
+	# 7: An der Knackbank, Walnuss mitten im Zudrücken
+	Game.einlagern({"wal": 40, "hasel": 20})
 	welt.hebel_ziehen()
 	welt.glas.fuelle("haelfte", 9, 4.0, "wal")
 	welt.glas.fuelle("haelfte", 4, 1.0, "hasel")
@@ -39,109 +102,45 @@ func _ready() -> void:
 	welt.station.druck = (welt.station.zonen.s0 + welt.station.zonen.s1) * 0.5
 	welt.station._visual_aktualisieren(0.0)
 	await _warte(0.3)
-	await _foto("01_knackbank")
+	await _foto("07_knackbank")
 	welt.station.set_process(true)
 	welt.station.druecken_ende()
 	s.aktive_station = null
 	await _warte(0.18)
-	await _foto("02_knack")
-	await _warte(1.0)
-	await _foto("03_danach")
-	# Werkzeug Holz an der Bank
-	Game.verdiene(500000, false)
-	Game.kaufe_werkzeug("holz")
-	await _warte(0.6)
-	if not welt.station.geladen:
-		welt.station.lade({"art": "nuss", "nuss": "wal"})
-	welt.station.druecken_start()
-	await _warte(0.35)
-	welt.station.set_process(false)
-	await _warte(0.2)
-	await _foto("04_hebelknacker")
-	welt.station.set_process(true)
-	welt.station.druecken_ende()
+	await _foto("08_knack")
 	s.aufstehen()
 	await _warte(0.8)
-	# Schale neben dem Knacker anvisieren: [E] nehmen, Linksklick hinsetzen
-	var sch: Item = welt.item_spawnen({"art": "schale", "nuss": "wal"}, welt.station.global_position + Vector3(0.09, 0.04, 0.05), Vector3.ZERO)
-	await _warte(0.6)
-	_blick(s, Vector3(0.15, 0.05, -1.45), 0.0, -0.5)
-	var kopf := s._kopf_transform().origin
-	var r := sch.global_position - kopf
-	s.rotation.y = atan2(-r.x, -r.z)
-	s._blick_x = atan2(r.y, Vector2(r.x, r.z).length())
-	await _warte(0.4)
-	await _foto("04b_schale_nehmen")
-	# Blick aus dem Fenster auf den Berg
-	_blick(s, Vector3(0.55, 0.05, -1.7), 0.0, 0.08)
-	await _warte(0.8)
-	await _foto("05_berg")
-	# Raum-Übersicht
+	# 9: Küche und Werkstatt
 	_blick(s, Vector3(2.3, 0.05, 2.3), deg_to_rad(40), -0.22)
 	await _warte(0.8)
-	await _foto("06_kueche")
-	_blick(s, Vector3(-0.8, 0.05, 1.6), deg_to_rad(-120), -0.12)
-	await _warte(0.8)
-	await _foto("07_kueche_west")
-	# Glas tragen
-	_blick(s, Vector3(-1.9, 0.05, -1.2), deg_to_rad(90), -0.3)
-	await _warte(0.2)
-	welt.glas.global_position = s.halte_punkt()
-	s._greifen(welt.glas)
-	await _warte(0.9)
-	await _foto("08_glas_tragen")
-	s._loslassen(Vector3.ZERO)
-	welt.glas.heimkehren()
-	# Werkstatt mit Maschinen
-	Game.nuesse_vom_berg(1000)
-	for id in ["rutsche", "mimi", "ofen", "sieb", "walze", "band", "grosses_glas", "rohrpost", "deckel"]:
+	await _foto("09_kueche")
+	for id in ["rutsche", "mimi", "sieb", "walze", "deckel", "lagerhalle"]:
 		Game.kaufe_maschine(id)
-	Game.energie = 120
-	welt.kiste.fuelle("haelfte", 30, 4.0)
 	await _warte(1.5)
 	_blick(s, Vector3(4.0, 0.05, 1.8), deg_to_rad(-55), -0.2)
 	await _warte(1.5)
-	await _foto("09_werkstatt")
-	# Hammer und Schraubstock an der Bank
-	Game.kaufe_werkzeug("hammer")
-	Game.kaufe_werkzeug("schraubstock")
-	_blick(s, Vector3(0.15, 0.05, -1.45), 0.0, -0.5)
-	await _warte(0.3)
-	for wz in ["hammer", "schraubstock"]:
-		Game.waehle_werkzeug(wz)
-		s.hinsetzen(welt.station)
-		await _warte(0.8)
-		if welt.station.geladen:
-			welt.station.entnehme()
-		welt.station.lade({"art": "nuss", "nuss": "mandel"})
-		welt.station.druecken_start()
-		await _warte(0.4 if wz == "hammer" else 0.9)
-		welt.station.set_process(false)
-		await _warte(0.2)
-		await _foto("09b_" + wz)
-		welt.station.set_process(true)
-		welt.station.druecken_ende()
-		await _warte(0.3)
-		s.aufstehen()
-		await _warte(0.5)
-	# Eichhörnchen am Glas
-	welt.glas.fuelle("haelfte", 8, 4.0)
-	welt._eichhoernchen_schicken(1)
-	_blick(s, Vector3(0.6, 0.05, -1.5), deg_to_rad(10), -0.5)
-	await _warte(2.6)
-	await _foto("10_eichhoernchen")
+	await _foto("10_werkstatt")
 	# Menüs
-	welt.menues.zeige_laden(1)
+	welt.menues.zeige_laden(0)
 	await _warte(0.4)
-	await _foto("11_katalog")
-	Game.mp = 40
+	await _foto("11_laden_sammeln")
+	welt.menues.zeige_laden(2)
+	await _warte(0.4)
+	await _foto("12_laden_helfer")
 	welt.menues.zeige_talente()
-	await _warte(0.4)
-	await _foto("12_talente")
+	await _warte(0.5)
+	await _foto("13_skillbaum")
 	welt.menues.zeige_intro()
 	await _warte(0.4)
-	await _foto("13_intro")
+	await _foto("14_intro")
 	get_tree().quit(0)
+
+
+func _zielen(s: Spieler, punkt: Vector3) -> void:
+	var kopf := s._kopf_transform().origin
+	var r := punkt - kopf
+	s.rotation.y = atan2(-r.x, -r.z)
+	s._blick_x = atan2(r.y, Vector2(r.x, r.z).length())
 
 
 func _blick(s: Spieler, pos: Vector3, dreh_y: float, neigung: float) -> void:

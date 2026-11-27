@@ -72,18 +72,102 @@ func _aktueller_reiter() -> int:
 
 
 # --- Laden ---------------------------------------------------------------------
-func zeige_laden(reiter := 0) -> void:
+func zeige_laden(reiter := -1) -> void:
 	_oeffnen("laden")
-	_reiter = reiter
-	var v := Stil.fenster(_wurzel, "Bestellkatalog  ·  %s Münzen" % Data.zahl(Game.muenzen), 900, 660, schliessen)
+	if reiter >= 0:
+		_reiter = reiter
+	var v := Stil.fenster(_wurzel, "Bestellbrett  ·  %s Münzen" % Data.zahl(Game.muenzen), 980, 700, schliessen)
 	var tabs := TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(tabs)
+	tabs.add_child(_reiter_sammeln())
+	tabs.add_child(_reiter_tragen())
+	tabs.add_child(_reiter_helfer())
 	tabs.add_child(_reiter_werkzeuge())
 	tabs.add_child(_reiter_maschinen())
 	tabs.add_child(_reiter_extras())
-	tabs.current_tab = reiter
+	tabs.current_tab = clampi(_reiter, 0, tabs.get_tab_count() - 1)
 	tabs.tab_changed.connect(func(i): _reiter = i)
+
+
+func _gesperrt_knopf(aera: int) -> Button:
+	var g := Stil.knopf("Ab Ära %d" % aera, func(): pass)
+	g.disabled = true
+	return g
+
+
+func _reiter_sammeln() -> Control:
+	var paar := _scrollbar("Sammeln")
+	var v: VBoxContainer = paar[1]
+	v.add_child(Stil.label("Womit du am Berg sammelst. [X] wechselt zwischen deinen Werkzeugen.", 16, Stil.LEISE, true))
+	for w in Data.SAMMLER:
+		var id: String = w.id
+		var knoepfe: Array = []
+		var text: String = w.text + "\n%s Nüsse/s · Reichweite %.1f m" % [str(w.rate).replace(".", ","), w.reichweite]
+		if int(w.aera) > Game.aera:
+			knoepfe.append(_gesperrt_knopf(w.aera))
+		elif not Game.sammler.has(id):
+			var k := Stil.knopf("Kaufen: %s" % Data.zahl(w.preis), func(): Game.kaufe_sammler(id))
+			k.disabled = Game.muenzen < float(w.preis)
+			knoepfe.append(k)
+		elif Game.sammler_aktiv == id:
+			var a := Stil.knopf("In der Hand", func(): pass)
+			a.disabled = true
+			knoepfe.append(a)
+		else:
+			knoepfe.append(Stil.knopf("Nehmen", func(): Game.waehle_sammler(id)))
+		v.add_child(_zeile(w.name, text, knoepfe))
+	return paar[0]
+
+
+func _reiter_tragen() -> Control:
+	var paar := _scrollbar("Tragen")
+	var v: VBoxContainer = paar[1]
+	v.add_child(Stil.label("Mehr tragen heißt seltener laufen. Du trägst gerade %d Nüsse." % Game.kapazitaet(), 16, Stil.LEISE, true))
+	var jetzt := Data.BEUTEL.find(Data.beutel(Game.beutel_id))
+	for i in Data.BEUTEL.size():
+		var b: Dictionary = Data.BEUTEL[i]
+		var id: String = b.id
+		var knoepfe: Array = []
+		var text: String = b.text + "\nFasst %s Nüsse%s" % [Data.zahl(b.kap), "" if float(b.tempo) >= 1.0 else " · %d %% langsamer" % int(round((1.0 - float(b.tempo)) * 100))]
+		if i <= jetzt:
+			var d := Stil.knopf("Vorhanden" if i == jetzt else "Abgelöst", func(): pass)
+			d.disabled = true
+			knoepfe.append(d)
+		elif int(b.get("aera", 1)) > Game.aera:
+			knoepfe.append(_gesperrt_knopf(b.aera))
+		else:
+			var k := Stil.knopf("Kaufen: %s" % Data.zahl(b.preis), func(): Game.kaufe_beutel(id))
+			k.disabled = Game.muenzen < float(b.preis)
+			knoepfe.append(k)
+		v.add_child(_zeile(b.name, text, knoepfe))
+	return paar[0]
+
+
+func _reiter_helfer() -> Control:
+	var paar := _scrollbar("Helfer & Posten")
+	var v: VBoxContainer = paar[1]
+	var hw := Game.helfer_werte()
+	var hk := Stil.knopf("Einstellen: %s" % Data.zahl(Game.helfer_preis()), func(): Game.kaufe_helfer())
+	hk.disabled = Game.muenzen < Game.helfer_preis()
+	v.add_child(_zeile("Sammel-Eichhörnchen  ·  %d im Dienst" % Game.helfer,
+		"Zahme Eichhörnchen mit rotem Halstuch. Sammeln am Berg und bringen alles zur nächsten Abgabestelle.\nJedes trägt %d Nüsse und sammelt %s pro Sekunde." % [int(hw.last), str(snappedf(float(hw.rate), 0.1)).replace(".", ",")], [hk]))
+	for d in Data.POSTEN:
+		var id: String = d.id
+		var knoepfe: Array = []
+		if Game.posten.has(id):
+			var x := Stil.knopf("Gebaut", func(): pass)
+			x.disabled = true
+			knoepfe.append(x)
+		elif int(d.aera) > Game.aera:
+			knoepfe.append(_gesperrt_knopf(d.aera))
+		else:
+			var preis := Game.posten_preis(id)
+			var k := Stil.knopf("Bauen: %s" % Data.zahl(preis), func(): Game.kaufe_posten(id))
+			k.disabled = Game.muenzen < preis
+			knoepfe.append(k)
+		v.add_child(_zeile(d.name, d.text, knoepfe))
+	return paar[0]
 
 
 func _zeile(titel: String, text: String, knoepfe: Array) -> Control:
@@ -115,7 +199,7 @@ func _scrollbar(name: String) -> Array:
 
 
 func _reiter_werkzeuge() -> Control:
-	var paar := _scrollbar("Werkzeuge")
+	var paar := _scrollbar("Knacken")
 	var v: VBoxContainer = paar[1]
 	for w in Data.WERKZEUGE:
 		var id: String = w.id
@@ -153,8 +237,6 @@ func _reiter_maschinen() -> Control:
 	var v: VBoxContainer = paar[1]
 	for id in Data.MASCHINEN:
 		var m: Dictionary = Data.MASCHINEN[id]
-		if id == "laufrad" and not Game.hat_talent("laufrad"):
-			continue
 		var knoepfe: Array = []
 		var text: String = m.text
 		if m.aera > Game.aera:
@@ -205,90 +287,27 @@ func _reiter_extras() -> Control:
 # --- Talentbaum ----------------------------------------------------------------
 func zeige_talente() -> void:
 	_oeffnen("talente")
-	var v := Stil.fenster(_wurzel, "Opas Talentbaum  ·  %d Meisterpunkte" % Game.mp, 1240, 720, schliessen)
-	v.add_child(Stil.label("Meisterpunkte gibt es für Meilensteine am Berg und für erfüllte Bestellungen. Im Wald entscheidest du dich: Abwehr oder Zähmen.", 16, Stil.LEISE, true))
-	var spalten := HBoxContainer.new()
-	spalten.add_theme_constant_override("separation", 10)
-	spalten.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(spalten)
-	for zweig in ["handwerk", "maschinen", "handel"]:
-		var sp := VBoxContainer.new()
-		sp.custom_minimum_size = Vector2(225, 0)
-		sp.add_theme_constant_override("separation", 8)
-		spalten.add_child(sp)
-		sp.add_child(_zweig_kopf(Data.ZWEIG_NAMEN[zweig]))
-		for id in _talente_im_zweig(zweig):
-			sp.add_child(_talent_karte(id))
-	var wald := VBoxContainer.new()
-	wald.custom_minimum_size = Vector2(470, 0)
-	wald.add_theme_constant_override("separation", 8)
-	spalten.add_child(wald)
-	wald.add_child(_zweig_kopf("Wald: abwehren oder zähmen"))
-	wald.add_child(_talent_karte("waldkenner"))
-	var zwei := HBoxContainer.new()
-	zwei.add_theme_constant_override("separation", 10)
-	wald.add_child(zwei)
-	for zweig in ["abwehr", "zaehmen"]:
-		var sp2 := VBoxContainer.new()
-		sp2.custom_minimum_size = Vector2(230, 0)
-		sp2.add_theme_constant_override("separation", 8)
-		zwei.add_child(sp2)
-		for id in _talente_im_zweig(zweig):
-			sp2.add_child(_talent_karte(id))
-
-
-func _zweig_kopf(text: String) -> Control:
+	var v := Stil.fenster(_wurzel, "Opas Notizbuch", 1400, 820, schliessen)
+	var titel := Stil.label("", 18, Stil.LEISE, true)
+	v.add_child(titel)
+	var aktualisieren := func():
+		titel.text = "%s Münzen  ·  %d von %d Skills gelernt  ·  Ziehen = verschieben, Mausrad = zoomen, Klick auf leuchtende Knoten = lernen" % [Data.zahl(Game.muenzen), Game.skills.size(), Data.skills().size() - 1]
+	aktualisieren.call()
+	var baum := Skillbaum.new()
+	baum.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	baum.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	baum.custom_minimum_size = Vector2(1300, 700)
+	baum.gekauft.connect(func(_id): aktualisieren.call())
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", Stil.box(Color(0.35, 0.3, 0.25, 0.9), Color(0.6, 0.55, 0.45), 8, 8))
-	var l := Stil.label(text, 20, Stil.TEXT)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	p.add_child(l)
-	return p
+	p.add_theme_stylebox_override("panel", Stil.box(Color(0.16, 0.11, 0.07, 0.95), Color(0.45, 0.32, 0.18), 8, 4))
+	p.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	p.add_child(baum)
+	v.add_child(p)
 
 
-func _talente_im_zweig(zweig: String) -> Array:
-	var aus: Array = []
-	for id in Data.TALENTE:
-		if Data.TALENTE[id].zweig == zweig:
-			aus.append(id)
-	aus.sort_custom(func(a, b): return Data.TALENTE[a].reihe < Data.TALENTE[b].reihe)
-	return aus
 
 
-func _talent_karte(id: String) -> Control:
-	var t: Dictionary = Data.TALENTE[id]
-	var status := Game.talent_status(id)
-	var stufe := Game.talent(id)
-	var schluss := int(t.reihe) == 4
-	var rand := Stil.GOLD if schluss else Color(0.6, 0.45, 0.28)
-	var grund := Color(0.3, 0.2, 0.1, 0.95)
-	if stufe > 0:
-		grund = Color(0.22, 0.38, 0.18, 0.95)
-	if status == "gesperrt" or status == "ausgeschlossen":
-		grund = Color(0.18, 0.15, 0.13, 0.95)
-	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", Stil.box(grund, rand, 8, 10))
-	var v := VBoxContainer.new()
-	p.add_child(v)
-	v.add_child(Stil.label(t.name, 19, Stil.GOLD if schluss else Stil.TEXT))
-	v.add_child(Stil.label(t.text, 15, Stil.TEXT, true))
-	var info := "Stufe %d/%d · %d MP" % [stufe, t.max, t.kosten]
-	match status:
-		"gesperrt":
-			info += " · braucht %s" % Data.TALENTE[t.braucht].name
-		"ausgeschlossen":
-			info = "Anderer Weg gewählt"
-		"max":
-			info = "Gelernt" if int(t.max) == 1 else "Stufe %d/%d · voll" % [stufe, t.max]
-	v.add_child(Stil.label(info, 14, Stil.LEISE, true))
-	if status == "frei" or status == "zu_teuer":
-		var k := Stil.knopf("Lernen", func(): Game.lerne_talent(id), 16)
-		k.disabled = status != "frei"
-		v.add_child(k)
-	return p
 
-
-# --- Pause -----------------------------------------------------------------------
 func zeige_pause() -> void:
 	_oeffnen("pause", true)
 	var v := Stil.fenster(_wurzel, "Pause", 620, 700, schliessen)
@@ -356,21 +375,21 @@ func _schalter(titel: String, schluessel: String) -> Control:
 func zeige_intro() -> void:
 	_oeffnen("intro", true)
 	var v := Stil.fenster(_wurzel, "Deez Nuts!", 860, 700, Callable())
-	v.add_child(Stil.label("Opa Walter hat dir seine alte Nussknackerei vererbt – und kurz vor seinem Tod einen Vertrag mit der Lebkuchenfabrik unterschrieben. Heute früh hat ein Laster eine Million Nüsse in den Hof gekippt. Trag den Berg ab, Nuss für Nuss. Die Eichhörnchen aus dem Wald haben ihn auch schon entdeckt …", 19, Stil.TEXT, true))
+	v.add_child(Stil.label("Opa Walter hat dir seine alte Nussknackerei vererbt – und kurz vor seinem Tod einen Vertrag mit der Lebkuchenfabrik unterschrieben. Heute früh hat ein Laster eine Million Nüsse in den Hof gekippt. Du hast: zwei Hände und Hosentaschen. Trag den Berg ab!", 19, Stil.TEXT, true))
 	v.add_child(Stil.label("So geht's", 24, Stil.GOLD))
-	var steuerung := """[WASD] laufen · [Shift] rennen · Maus schauen · [E] benutzen, nehmen, ablegen
-[Rechtsklick] werfen · [Q] fallen lassen · [R] Hebel ziehen · [Tab] Talentbaum · [Esc] Menü
+	var steuerung := """Draußen am Nussberg:
+   [Linksklick halten] Nüsse sammeln · ist der Beutel voll, lauf in den gelben Kreis am Silo
+   [X] Sammelwerkzeug wechseln · [WASD] laufen · [Shift] rennen · [Leertaste] springen
 
-An der Knackbank ([E] auf den Nussknacker):
-   [Linksklick halten] zudrücken – loslassen, wenn die Nuss zittert und knistert
-   [Rechtsklick] Schalen wegwischen · [R] neue Nüsse vom Berg · [E] aufstehen
-   Erster Riss = noch zu früh. Zittern und Knistern = jetzt loslassen!
+In der Hütte an der Knackbank ([E] auf den Nussknacker oder den Hocker):
+   [R] holt Nüsse aus dem Lager · [Linksklick halten] zudrücken, loslassen wenn die Nuss zittert
+   [Rechtsklick] Schalen wegwischen · [E] aufstehen
+   Knacken bringt viel mehr als Abliefern. Volle Gläser verkauft die Rohrpost von selbst.
 
-Perfekte Kerne fliegen von selbst ins Glas. Ist es voll, nimm es [E]
-und bring es zur Verkaufsklappe an der linken Wand. Dort [E] = verkaufen.
-Am roten Telefon bestellst du bessere Werkzeuge und Maschinen."""
+Am Bestellbrett vor der Hütte (oder [B]) kaufst du Werkzeug, Beutel, Helfer und Posten.
+[Tab] öffnet Opas Notizbuch, den Skillbaum. [Esc] Menü."""
 	v.add_child(Stil.label(steuerung, 17, Stil.TEXT, true))
-	v.add_child(Stil.label("Testhilfen: [F9] +5.000 Münzen · [F10] +1.000 Nüsse geknackt · [F11] +5 Meisterpunkte", 15, Stil.LEISE, true))
+	v.add_child(Stil.label("Testhilfen: [F9] +5.000 Münzen · [F10] +1.000 Nüsse ins Lager · [F11] +50.000 Münzen", 15, Stil.LEISE, true))
 	v.add_child(Stil.knopf("Los geht's!", func():
 		Game.erster_start = false
 		schliessen(), 24))

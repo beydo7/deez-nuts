@@ -27,14 +27,17 @@ func _ready() -> void:
 		welt.menues.schliessen()
 	Game.erster_start = false
 	welt.spieler.gesperrt = false
+	await _berg_und_sammeln()
+	await _abliefern()
 	await _knacken()
 	await _verkaufen()
 	await _laden_und_maschinen()
+	await _helfer_und_posten()
 	await _werkstatt()
 	await _eichhoernchen()
-	_talente()
+	_skills()
 	_bestellungen()
-	await _wischen_und_ofen()
+	await _wischen()
 	await _menues()
 	await _spieler()
 	_speichern()
@@ -44,13 +47,71 @@ func _ready() -> void:
 	get_tree().quit(1 if fehler.size() > 0 else 0)
 
 
+func _berg_und_sammeln() -> void:
+	print("-- Nussberg und Sammeln")
+	var berg: Nussberg = welt.berg
+	pruefe(berg.volumen > 1000.0, "Berg hat Volumen (%d m³)" % int(berg.volumen))
+	pruefe(berg.hoehe_bei(Nussberg.MITTE.x, Nussberg.MITTE.z) > 7.0, "Berg ist in der Mitte hoch")
+	pruefe(berg.hoehe_bei(2.0, -3.0) == 0.0, "An der Hütte liegt kein Berg")
+	# Bodenkollision: ein Strahl von oben trifft den Berg
+	var q := PhysicsRayQueryParameters3D.create(Vector3(1, 30, -32), Vector3(1, -5, -32), Data.L_WELT)
+	var t: Dictionary = welt.get_world_3d().direct_space_state.intersect_ray(q)
+	pruefe(not t.is_empty() and berg.ist_berg(t.collider), "Berg hat Kollision")
+	# Abbauen hält Zähler und Volumen zusammen
+	var rest_vorher := Game.berg_rest()
+	var vol_vorher := berg.volumen
+	var stelle := Vector3(1.0, 0, -14.0)
+	var h_vorher := berg.hoehe_bei(stelle.x, stelle.z)
+	var n := berg.abbauen(stelle, 1.0, 200)
+	Game.nuesse_vom_berg(n)
+	pruefe(n > 150 and n <= 201, "Abbauen liefert die gewünschte Menge (%d)" % n)
+	pruefe(berg.hoehe_bei(stelle.x, stelle.z) < h_vorher, "Berg sinkt an der Stelle")
+	var verh_vorher := float(rest_vorher) / vol_vorher
+	var verh_nachher := float(Game.berg_rest()) / berg.volumen
+	pruefe(absf(verh_vorher - verh_nachher) / verh_vorher < 0.01, "Nüsse pro m³ bleiben gleich")
+	# Spieler sammelt mit gedrückter Taste
+	var s: Spieler = welt.spieler
+	s.global_position = Vector3(1.0, berg.hoehe_bei(1.0, -11.0) + 0.8, -11.0)
+	await warte(0.8)
+	_zielen_auf(s, Vector3(1.0, berg.hoehe_bei(1.0, -12.8), -12.8))
+	await warte(0.3)
+	pruefe(s.sammel_punkt != Vector3.INF, "Fadenkreuz trifft den Berg")
+	pruefe(s.hinweis.contains("sammeln"), "Hinweis zeigt Sammeln")
+	Game.sammler["schaufel"] = 0
+	Game.waehle_sammler("schaufel")
+	var genommen_vorher := Game.genommen
+	s.set_meta("test_sammeln", true)
+	await warte(2.0)
+	s.remove_meta("test_sammeln")
+	pruefe(Game.beutel_menge() > 0, "Sammeln füllt den Beutel (%d)" % Game.beutel_menge())
+	pruefe(Game.genommen > genommen_vorher, "Gesammelte Nüsse fehlen dem Berg")
+	pruefe(Game.beutel_frei() == 0, "Beutel ist irgendwann voll")
+	pruefe(welt.flug.anzahl() >= 0, "Fliegende Nüsse ohne Absturz")
+	Game.sammler.erase("schaufel")
+	Game.waehle_sammler("haende")
+
+
+func _abliefern() -> void:
+	print("-- Abliefern")
+	var s: Spieler = welt.spieler
+	var menge := Game.beutel_menge()
+	var muenzen := Game.muenzen
+	s.global_position = welt.ABGABE_POS + Vector3(0, 0.1, 0)
+	await warte(1.2)
+	pruefe(Game.beutel_menge() == 0, "Im gelben Kreis wird der Beutel geleert")
+	pruefe(Game.lager_menge() >= menge, "Nüsse liegen im Lager (%d)" % Game.lager_menge())
+	pruefe(Game.muenzen >= muenzen + menge * 0.99, "Abliefern bringt sofort Münzen")
+	Game.einlagern({"wal": 30, "hasel": 30})
+	s.global_position = Vector3(0.15, 0.05, -1.0)
+	await warte(0.3)
+
+
 func _knacken() -> void:
 	print("-- Knacken")
 	welt._hebel_ziehen(null)
 	await warte(1.2)
 	var n: int = welt._nuesse_in_schale()
-	pruefe(n > 0, "Hebel holt Nüsse in die Schale (%d)" % n)
-	pruefe(Game.genommen > 0, "Berg wird kleiner")
+	pruefe(n > 0, "Hebel holt Nüsse aus dem Lager in die Schale (%d)" % n)
 	var st: Knackstation = welt.station
 	# Haselnuss mit bloßen Händen: direkt perfekt
 	st.lade({"art": "nuss", "nuss": "hasel"})
@@ -107,63 +168,78 @@ func _verkaufen() -> void:
 	await warte(0.6)
 	pruefe(Game.muenzen > vorher, "Glas an der Klappe verkauft (%.1f Münzen)" % (Game.muenzen - vorher))
 	pruefe(glas.belegt() == 0, "Glas ist danach leer")
-	pruefe(s.gehalten == null, "Glas ist aus der Hand")
 	await warte(0.5)
 	pruefe(glas.global_position.distance_to(glas.heim.origin) < 0.1, "Glas steht wieder auf dem Tisch")
+	var m_vorher := Game.muenzen
+	glas.fuelle("haelfte", glas.kapazitaet, 4.0, "wal")
+	await warte(2.5)
+	pruefe(glas.belegt() == 0 and Game.muenzen > m_vorher, "Rohrpost verkauft volle Gläser von selbst")
 
 
 func _laden_und_maschinen() -> void:
 	print("-- Laden")
 	Game.verdiene(500000, false)
+	pruefe(Game.kaufe_sammler("loeffel"), "Holzlöffel kaufen")
+	pruefe(Game.sammler_aktiv == "loeffel", "Löffel ist in der Hand")
+	pruefe(not Game.kaufe_sammler("laubsauger"), "Laubsauger erst ab Ära 2")
+	var kap := Game.kapazitaet()
+	pruefe(Game.kaufe_beutel("stoffbeutel"), "Stoffbeutel kaufen")
+	pruefe(Game.kapazitaet() > kap, "Mehr Platz im Beutel (%d)" % Game.kapazitaet())
+	pruefe(not Game.kaufe_beutel("taschen"), "Kein Rückschritt beim Beutel")
 	pruefe(Game.kaufe_werkzeug("holz"), "Holz-Nussknacker kaufen")
 	pruefe(Game.werkzeug_aktiv == "holz", "Neues Werkzeug ist aktiv")
 	pruefe(Game.kaufe_werkzeug("metall"), "Metall-Hebelknacker kaufen")
 	pruefe(Game.werte_werkzeug_auf("metall"), "Werkzeug verbessern")
 	pruefe(not Game.kaufe_werkzeug("hammer"), "Hammer erst ab Ära 2")
-	pruefe(Game.kaufe_maschine("rutsche"), "Nussrutsche kaufen")
-	pruefe(Game.kaufe_maschine("deckel"), "Glasdeckel kaufen")
-	pruefe(Game.kaufe_maschine("mimi"), "Katze kaufen")
-	pruefe(Game.kaufe_maschine("grosses_glas"), "Großes Glas kaufen")
-	await warte(0.1)
-	pruefe(welt.glas.kapazitaet == 48, "Großes Glas fasst 48")
-	pruefe(Game.kaufe_maschine("rohrpost"), "Rohrpost kaufen")
-	var m_vorher := Game.muenzen
-	welt.glas.fuelle("haelfte", 48, 4.0, "wal")
-	await warte(2.5)
-	pruefe(welt.glas.belegt() == 0 and Game.muenzen > m_vorher, "Rohrpost verkauft das volle Glas")
+	for id in ["rutsche", "deckel", "mimi", "sieb"]:
+		pruefe(Game.kaufe_maschine(id), "%s kaufen" % Data.MASCHINEN[id].name)
 	pruefe(not Game.kaufe_maschine("walze"), "Walzenknacker erst ab Ära 2")
+	Game.einlagern({"wal": 20})
 	await warte(3.0)
-	pruefe(welt.station.geladen, "Rutsche legt eine Nuss in den Knacker")
+	pruefe(welt.station.geladen, "Rutsche legt eine Nuss aus dem Lager in den Knacker")
+
+
+func _helfer_und_posten() -> void:
+	print("-- Helfer und Außenposten")
+	var preis := Game.helfer_preis()
+	pruefe(Game.kaufe_helfer(), "Sammel-Eichhörnchen einstellen")
+	pruefe(Game.helfer_preis() > preis, "Jedes weitere kostet mehr")
+	for i in 3:
+		Game.kaufe_helfer()
+	await warte(0.2)
+	pruefe(welt._helfer_knoten.size() == 4, "Helfer stehen in der Welt (%d)" % welt._helfer_knoten.size())
+	pruefe(Game.kaufe_posten("posten_vorn"), "Außenposten Vorn bauen")
+	pruefe(welt._abgaben.size() == 2, "Zweite Abgabestelle")
+	pruefe(not Game.kaufe_posten("posten_west"), "Posten West erst ab Ära 2")
+	var lager := int(Game.statistik.get("abgeliefert", 0))
+	var genommen := Game.genommen
+	await warte(14.0)
+	pruefe(Game.genommen > genommen, "Helfer sammeln am Berg (%d)" % (Game.genommen - genommen))
+	pruefe(int(Game.statistik.get("abgeliefert", 0)) > lager, "Helfer liefern ab")
 
 
 func _werkstatt() -> void:
 	print("-- Werkstatt")
-	Game.nuesse_vom_berg(1000)
+	Game.nuesse_vom_berg(Data.SCHICHTEN[1].ab)
 	await warte(0.2)
-	pruefe(Game.aera == 2, "Ära 2 nach %d Nüssen" % Data.SCHICHTEN[1].ab)
+	pruefe(Game.aera == 2, "Ära 2 nach %s Nüssen" % Data.zahl(Data.SCHICHTEN[1].ab))
 	pruefe(welt._werkstatt_tuer == null, "Werkstatttür ist offen")
-	for id in ["ofen", "sieb", "walze", "band"]:
-		pruefe(Game.kaufe_maschine(id), "%s kaufen" % id)
+	pruefe(Game.kaufe_maschine("walze"), "Walzenknacker kaufen")
+	pruefe(Game.kaufe_maschine("lagerhalle"), "Lagerhalle kaufen")
+	pruefe(Game.lager_kapazitaet() >= Data.LAGER_GROESSE * 10, "Lagerhalle vergrößert das Lager")
+	pruefe(Game.kaufe_sammler("laubsauger"), "Laubsauger kaufen")
 	pruefe(Game.kaufe_werkzeug("hammer"), "Hammer kaufen")
-	pruefe(Game.kaufe_werkzeug("schraubstock"), "Schraubstock kaufen")
-	Game.energie = 200.0
+	pruefe(not Game.kaufe_werkzeug("schraubstock"), "Schraubstock erst ab Ära 3")
+	for h in welt._helfer_knoten:
+		h.set_process(false)
+	Game.einlagern({"wal": 300, "hasel": 300})
 	var vorher := Game.geknackt
-	var muenzen_vorher := Game.muenzen
-	await warte(8.0)
+	var lager := Game.lager_menge()
+	await warte(4.0)
 	pruefe(Game.geknackt > vorher, "Walzenknacker knackt allein (%d)" % (Game.geknackt - vorher))
-	pruefe(Game.energie < 200.0, "Walzenknacker verbraucht Energie")
-	pruefe(Game.muenzen > muenzen_vorher or welt.kiste.belegt() > 0, "Förderband oder Kiste bekommt Kerne")
-	# Sieb sortiert nach einem Handknack
-	var st: Knackstation = welt.station
-	if st.geladen:
-		st.entnehme()
-	st.lade({"art": "nuss", "nuss": "wal"})
-	var glas_vorher: int = welt.glas.haelften
-	st.druecken_start()
-	st.druck = (st.zonen.s0 + st.zonen.s1) * 0.5
-	st.druecken_ende()
-	await warte(1.5)
-	pruefe(welt.glas.haelften > glas_vorher, "Tisch-Sieb bringt Hälften ins Glas")
+	pruefe(Game.lager_menge() < lager, "Walzenknacker nimmt aus dem Lager")
+	for h in welt._helfer_knoten:
+		h.set_process(true)
 
 
 func _eichhoernchen() -> void:
@@ -184,16 +260,29 @@ func _eichhoernchen() -> void:
 	pruefe(get_tree().get_nodes_in_group("eichhoernchen").size() > 0, "Raubzug schickt mehrere")
 
 
-func _talente() -> void:
-	print("-- Talente")
-	Game.mp = 300
-	pruefe(Game.lerne_talent("ruhige_hand"), "Ruhige Hand lernen")
-	pruefe(not Game.lerne_talent("goldhand"), "Goldhändchen gesperrt ohne Vorstufe")
-	pruefe(Game.lerne_talent("waldkenner"), "Waldkenner lernen")
-	pruefe(Game.lerne_talent("katzenfreund"), "Katzenfreund lernen")
-	pruefe(Game.talent_status("nussfluesterer") == "ausgeschlossen", "Zähmen ist nach Abwehr ausgeschlossen")
-	pruefe(Game.lerne_talent("feilschen"), "Feilschen lernen")
-	pruefe(Game.preis_faktor() > 1.0, "Feilschen erhöht Preise")
+func _skills() -> void:
+	print("-- Skillbaum")
+	var alle := Data.skills()
+	pruefe(alle.size() > 150, "Skillbaum hat viele Knoten (%d)" % alle.size())
+	for id in ["ruhige_hand", "rhythmus", "goldhand", "meisterknack", "gut_geoelt", "baumeister", "selbstlaeufer", "feilschen",
+			"stammkunden", "nussbaron", "katzenfreund", "festung", "waechter", "nussfluesterer", "koenigsbund", "wuehlmaus",
+			"grabkoenig", "nusswelle", "packesel", "siebenmeilen", "bodenlos"]:
+		if not alle.has(id):
+			pruefe(false, "Schlüsselknoten %s fehlt" % id)
+	for id in alle:
+		var k: Dictionary = alle[id]
+		if k.braucht != "" and not alle.has(k.braucht):
+			pruefe(false, "Knoten %s hängt an fehlendem %s" % [id, k.braucht])
+	Game.verdiene(100000, false)
+	var rate := float(Game.sammel_werte().rate)
+	pruefe(Game.skill_status("sammeln_1") == "gesperrt", "Zweiter Knoten ist erst gesperrt")
+	pruefe(Game.kaufe_skill("sammeln_0"), "Ersten Sammel-Skill lernen")
+	pruefe(float(Game.sammel_werte().rate) > rate, "Skill erhöht das Sammeltempo")
+	pruefe(Game.skill_status("sammeln_1") != "gesperrt", "Nächster Knoten wird frei")
+	pruefe(not Game.kaufe_skill("sammeln_0"), "Doppelt lernen geht nicht")
+	var kap := Game.kapazitaet()
+	Game.kaufe_skill("tragen_0")
+	pruefe(Game.kapazitaet() > kap, "Tragen-Skill erhöht die Kapazität")
 
 
 func _bestellungen() -> void:
@@ -203,13 +292,13 @@ func _bestellungen() -> void:
 	b.nuss = "wal"
 	b.menge = 2
 	b.stand = 0
-	var mp_vorher := Game.mp
+	var vorher := Game.muenzen
 	Game.melde_knack("wal", "perfekt", true, 2)
-	pruefe(Game.mp == mp_vorher + 1, "Erfüllte Bestellung gibt einen Meisterpunkt")
+	pruefe(Game.muenzen > vorher, "Erfüllte Bestellung bringt Münzen")
 
 
-func _wischen_und_ofen() -> void:
-	print("-- Wischen und Ofen")
+func _wischen() -> void:
+	print("-- Wischen")
 	var eimer: Behaelter = welt.eimer
 	eimer.leeren()
 	var p: Vector3 = welt.station.global_position + Vector3(0, 0.05, 0.1)
@@ -220,20 +309,14 @@ func _wischen_und_ofen() -> void:
 	welt.wischen(p)
 	await warte(1.2)
 	pruefe(eimer.schalen >= 5, "Wischen bringt Schalen in den Eimer (%d)" % eimer.schalen)
-	var e_vorher := Game.energie
-	welt._ofen_betreten(eimer)
-	pruefe(Game.energie > e_vorher, "Ofen macht aus Schalen Energie")
 
 
 func _menues() -> void:
 	print("-- Menüs")
 	var m: Menues = welt.menues
-	m.zeige_laden(0)
-	await warte(0.2)
-	m.zeige_laden(1)
-	await warte(0.2)
-	m.zeige_laden(2)
-	await warte(0.2)
+	for r in 6:
+		m.zeige_laden(r)
+		await warte(0.15)
 	m.zeige_talente()
 	await warte(0.2)
 	m.zeige_pause()
@@ -275,13 +358,13 @@ func _spieler() -> void:
 	if welt.station.geladen:
 		welt.station.entnehme()
 	Game.maschinen.erase("rutsche")
+	Game.einlagern({"wal": 20})
 	welt._hebel_sperre = 0.0
 	welt.hebel_ziehen()
 	await warte(1.0)
 	_taste(KEY_E)
 	await warte(0.1)
 	pruefe(s.sitzt, "[E] am Knacker: hinsetzen")
-	pruefe(Game.ziel_index >= 1, "Ziel „Hinsetzen“ geschafft")
 	await warte(1.0)
 	pruefe(welt.station.geladen, "Im Sitzen wird automatisch nachgelegt")
 	_maus(MOUSE_BUTTON_LEFT, true)
@@ -377,4 +460,8 @@ func _speichern() -> void:
 	Game.speichern()
 	pruefe(FileAccess.file_exists(Game.SPEICHER_PFAD), "Spielstand geschrieben")
 	var d = JSON.parse_string(FileAccess.get_file_as_string(Game.SPEICHER_PFAD))
-	pruefe(typeof(d) == TYPE_DICTIONARY and d.has("behaelter"), "Spielstand lesbar")
+	pruefe(typeof(d) == TYPE_DICTIONARY and d.has("behaelter") and d.has("lager"), "Spielstand lesbar")
+	pruefe(FileAccess.file_exists(Game.BERG_PFAD), "Berg gespeichert")
+	var kopie := Nussberg.new()
+	pruefe(kopie.laden(Game.BERG_PFAD) and absf(kopie.volumen - welt.berg.volumen) < 0.01, "Berg wird genau so wieder geladen")
+	kopie.free()

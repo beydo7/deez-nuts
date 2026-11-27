@@ -35,6 +35,11 @@ var _stempel_zeit := 0.0
 var _toasts: VBoxContainer
 var _banner: VBoxContainer
 var _kreuz: Fadenkreuz
+var _beutel_box: PanelContainer
+var _beutel_text: Label
+var _beutel_balken: ProgressBar
+var _beutel_alt := -1
+var _pfeil: Pfeil
 var _prompt_alt := ""
 var _bestell_timer := 0.0
 
@@ -58,6 +63,7 @@ func _ready() -> void:
 	Game.ziel_geaendert.connect(_ziel_zeichnen)
 	Game.geld_geaendert.connect(_ziel_zeichnen)
 	Game.verkauft.connect(_verkauft)
+	Game.abgeliefert.connect(_abgeliefert)
 	_muenz_anzeige = Game.muenzen
 	_bestellungen_zeichnen()
 	_ziel_zeichnen()
@@ -215,6 +221,31 @@ func _unten_bauen() -> void:
 	_tasten_leiste.add_theme_constant_override("separation", 22)
 	_tasten_leiste.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_wurzel.add_child(_tasten_leiste)
+	_beutel_box = PanelContainer.new()
+	_beutel_box.anchor_left = 0.5
+	_beutel_box.anchor_right = 0.5
+	_beutel_box.anchor_top = 1.0
+	_beutel_box.anchor_bottom = 1.0
+	_beutel_box.offset_left = -170
+	_beutel_box.offset_right = 170
+	_beutel_box.offset_top = -132
+	_beutel_box.offset_bottom = -66
+	_beutel_box.pivot_offset = Vector2(170, 33)
+	_beutel_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_wurzel.add_child(_beutel_box)
+	var bv := VBoxContainer.new()
+	_beutel_box.add_child(bv)
+	_beutel_text = Stil.label("", 19, Stil.TEXT)
+	_beutel_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bv.add_child(_beutel_text)
+	_beutel_balken = ProgressBar.new()
+	_beutel_balken.custom_minimum_size = Vector2(320, 12)
+	_beutel_balken.show_percentage = false
+	bv.add_child(_beutel_balken)
+	_pfeil = Pfeil.new()
+	_pfeil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pfeil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_wurzel.add_child(_pfeil)
 	_glas_box = PanelContainer.new()
 	_glas_box.anchor_left = 1.0
 	_glas_box.anchor_right = 1.0
@@ -248,14 +279,11 @@ func _process(delta: float) -> void:
 	else:
 		_muenz_anzeige = lerpf(_muenz_anzeige, ziel, 1.0 - exp(-delta * 6.0))
 	_muenz_label.text = Data.zahl(_muenz_anzeige)
-	var neben := "%d Meisterpunkte" % Game.mp
-	if Game.mp > 0:
-		neben += "  [Tab]"
+	var neben := "Lager %s / %s" % [Data.zahl(Game.lager_menge()), Data.zahl(Game.lager_kapazitaet())]
+	if Game.helfer > 0:
+		neben += "\n%d Sammel-Eichhörnchen" % Game.helfer
 	if Game.gold > 0:
 		neben += "\n%d Goldene Nüsse" % Game.gold
-	if Game.hat_maschine("ofen") or Game.energie > 0.0:
-		neben += "\nEnergie %d" % int(Game.energie)
-	neben += "\n" + Data.werkzeug(Game.werkzeug_aktiv).name
 	_nebenwerte.text = neben
 	_combo.position.y = _muenz_box.position.y + _muenz_box.size.y + 6
 	if Game.combo >= 2:
@@ -296,6 +324,7 @@ func _process(delta: float) -> void:
 		_kreuz.queue_redraw()
 	_tasten_leiste_zeichnen(sitzt)
 	_glas_zeichnen(sitzt)
+	_beutel_zeichnen(sitzt)
 	# Stempel
 	if _stempel_zeit > 0.0:
 		_stempel_zeit -= delta
@@ -362,15 +391,15 @@ func _tasten_leiste_zeichnen(sitzt: bool) -> void:
 	var paare: Array = []
 	match modus:
 		"sitzen":
-			paare = [["Linksklick", "halten & loslassen: knacken"], ["Rechtsklick", "Schalen wischen"], ["R", "Hebel"], ["E", "aufstehen"]]
+			paare = [["Linksklick", "halten & loslassen: knacken"], ["Rechtsklick", "Schalen wischen"], ["R", "Nüsse aus dem Lager"], ["E", "aufstehen"]]
 		"leer":
-			paare = [["R", "Nüsse holen (Hebel)"], ["Rechtsklick", "Schalen wischen"], ["E", "aufstehen"]]
+			paare = [["R", "Nüsse aus dem Lager holen"], ["Rechtsklick", "Schalen wischen"], ["E", "aufstehen"]]
 		"dieb":
 			paare = [["Rechtsklick", "EICHHÖRNCHEN VERJAGEN!"], ["E", "aufstehen"]]
 		"tragen":
 			paare = [["E", "ablegen / hinein"], ["Rechtsklick", "werfen"], ["Q", "fallen lassen"]]
 		"laufen":
-			paare = [["WASD", "laufen"], ["E", "benutzen"], ["R", "Hebel"], ["Tab", "Talente"], ["Esc", "Menü"]]
+			paare = [["Linksklick", "sammeln"], ["E", "benutzen"], ["X", "Werkzeug"], ["B", "Laden"], ["Tab", "Skills"], ["Esc", "Menü"]]
 	for p in paare:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 6)
@@ -379,15 +408,64 @@ func _tasten_leiste_zeichnen(sitzt: bool) -> void:
 		_tasten_leiste.add_child(h)
 
 
+func _beutel_zeichnen(sitzt: bool) -> void:
+	var menge := Game.beutel_menge()
+	var kap := Game.kapazitaet()
+	_beutel_box.visible = not sitzt
+	var voll := menge >= kap
+	_beutel_text.text = ("%s VOLL – ab zum gelben Kreis!" if voll else "%s  %s / %s") % ([Data.beutel(Game.beutel_id).name] if voll else [Data.beutel(Game.beutel_id).name, Data.zahl(menge), Data.zahl(kap)])
+	_beutel_text.add_theme_color_override("font_color", Stil.GOLD if voll else Stil.TEXT)
+	_beutel_balken.value = 100.0 * float(menge) / float(max(1, kap))
+	if menge != _beutel_alt:
+		if _beutel_alt >= 0 and menge > _beutel_alt and _beutel_box.scale.x < 1.02:
+			_beutel_box.scale = Vector2(1.04, 1.04)
+			create_tween().tween_property(_beutel_box, "scale", Vector2.ONE, 0.12)
+		_beutel_alt = menge
+	# Pfeil zur nächsten Abgabe, wenn der Beutel voll ist
+	_pfeil.ziel_bild = Vector2.INF
+	if voll and not sitzt and welt and spieler:
+		var ziel: Vector3 = welt.naechste_abgabe(spieler.global_position)
+		var cam := spieler.kamera
+		var abstand := spieler.global_position.distance_to(ziel)
+		_pfeil.text = "%d m" % int(abstand)
+		if abstand > 2.0:
+			if cam.is_position_behind(ziel):
+				var lokal := cam.global_transform.affine_inverse() * ziel
+				_pfeil.ziel_bild = _wurzel.size * 0.5 + Vector2(lokal.x, -lokal.y).normalized() * -2000.0
+			else:
+				_pfeil.ziel_bild = cam.unproject_position(ziel + Vector3(0, 1.0, 0))
+	_pfeil.queue_redraw()
+
+
+func _abgeliefert(anzahl: int, betrag: float, pos: Vector3) -> void:
+	if spieler == null or pos.distance_to(spieler.global_position) > 8.0:
+		return
+	var l := Stil.label("+%s  (%s Nüsse)" % [Data.zahl(betrag), Data.zahl(anzahl)], 34, Stil.GOLD)
+	l.add_theme_constant_override("outline_size", 8)
+	l.position = _wurzel.size * 0.5 + Vector2(-120, -120)
+	_wurzel.add_child(l)
+	var ziel := _muenz_box.position + Vector2(60, 6)
+	var tw := create_tween()
+	tw.tween_property(l, "position", l.position + Vector2(0, -50), 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "position", ziel, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(l, "scale", Vector2(0.5, 0.5), 0.5)
+	tw.tween_callback(func():
+		l.queue_free()
+		Sfx.spiele("muenzen", -6.0)
+		_muenz_box.pivot_offset = _muenz_box.size * 0.5
+		_muenz_box.scale = Vector2(1.12, 1.12)
+		create_tween().tween_property(_muenz_box, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT))
+
+
 func _glas_zeichnen(sitzt: bool) -> void:
 	var glas: Behaelter = welt.glas if welt else null
-	_glas_box.visible = glas != null and (sitzt or glas.belegt() > 0)
+	_glas_box.visible = glas != null and sitzt
 	if not _glas_box.visible:
 		return
 	_glas_text.text = "%s  %d/%d  ·  %s Münzen" % [glas.anzeige_name(), glas.belegt(), glas.kapazitaet, Data.zahl(glas.verkaufswert())]
 	_glas_balken.value = 100.0 * float(glas.belegt()) / float(glas.kapazitaet)
 	if glas.voll():
-		_glas_text.text = "%s VOLL  ·  %s Münzen  ·  ab zur Klappe!" % [glas.anzeige_name(), Data.zahl(glas.verkaufswert())]
+		_glas_text.text = "%s VOLL  ·  %s Münzen  ·  Rohrpost!" % [glas.anzeige_name(), Data.zahl(glas.verkaufswert())]
 		_glas_text.add_theme_color_override("font_color", Stil.GOLD)
 	else:
 		_glas_text.add_theme_color_override("font_color", Stil.TEXT)
@@ -416,7 +494,7 @@ func _ziel_zeichnen() -> void:
 		var naechste := Data.naechste_schicht(Game.genommen)
 		_ziel_titel.text = "ZIEL"
 		_ziel_text.text = "Trag den Berg ab!" if naechste.is_empty() else "Grab dich bis zur Schicht „%s“" % naechste.name
-		_ziel_hilfe.text = "Talente lernen mit [Tab]" if Game.mp > 0 else ""
+		_ziel_hilfe.text = "Skills lernen mit [Tab]"
 		_ziel_balken.visible = false
 		return
 	_ziel_titel.text = "NÄCHSTES ZIEL"
@@ -539,6 +617,32 @@ func _verkauft(betrag: float, pos: Vector3) -> void:
 # =============================================================================
 # Zeichnungen
 # =============================================================================
+class Pfeil extends Control:
+	var ziel_bild := Vector2.INF
+	var text := ""
+
+	func _draw() -> void:
+		if ziel_bild == Vector2.INF:
+			return
+		var rand := 70.0
+		var m := size * 0.5
+		var p := ziel_bild
+		var innen := Rect2(Vector2(rand, rand), size - Vector2(rand, rand) * 2.0)
+		var am_rand := not innen.has_point(p)
+		if am_rand:
+			var d := (p - m)
+			var f: float = min((size.x * 0.5 - rand) / max(absf(d.x), 0.001), (size.y * 0.5 - rand) / max(absf(d.y), 0.001))
+			p = m + d * f
+		var puls := 0.8 + 0.2 * sin(Time.get_ticks_msec() * 0.008)
+		var richtung := (p - m).normalized() if am_rand else Vector2.DOWN
+		var spitze := p + richtung * 16.0 * puls
+		var quer := Vector2(-richtung.y, richtung.x)
+		draw_colored_polygon(PackedVector2Array([spitze, p - richtung * 10.0 + quer * 14.0, p - richtung * 10.0 - quer * 14.0]), Color(1.0, 0.8, 0.25, 0.95))
+		var schrift := Look.schrift(600)
+		draw_string_outline(schrift, p - richtung * 26.0 - Vector2(24, -6), text, HORIZONTAL_ALIGNMENT_CENTER, 48, 18, 6, Color(0.1, 0.06, 0.03))
+		draw_string(schrift, p - richtung * 26.0 - Vector2(24, -6), text, HORIZONTAL_ALIGNMENT_CENTER, 48, 18, Color(1.0, 0.85, 0.35))
+
+
 class Muenze extends Control:
 	func _draw() -> void:
 		var m := size * 0.5

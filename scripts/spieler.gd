@@ -39,6 +39,14 @@ var _markiert: Node = null
 var _nachlege_pause := 0.0
 var _fp_hand: Hand
 var _rausch := FastNoiseLite.new()
+var geraet: Sammelgeraet
+var sammel_punkt := Vector3.INF      # Stelle am Berg, auf die man gerade zielt (in Reichweite)
+var sammelt := false
+var _sammel_acc := 0.0
+var _sammel_ton := 0.0
+var _staub_timer := 0.0
+var _voll_gemeldet := false
+var _welle_timer := 0.0
 
 
 func _ready() -> void:
@@ -63,6 +71,10 @@ func _ready() -> void:
 	_fp_hand.greifen = 0.55
 	_fp_hand.visible = false
 	kamera.add_child(_fp_hand)
+	geraet = Sammelgeraet.new()
+	kamera.add_child(geraet)
+	geraet.setze(Game.sammler_aktiv)
+	Game.werkzeug_geaendert.connect(func(): geraet.setze(Game.sammler_aktiv))
 	_rausch.frequency = 2.5
 	welt = get_tree().current_scene
 	kamera.global_transform = _kopf_transform()
@@ -104,6 +116,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("rechts_klick"):
 		if gehalten:
 			_werfen()
+	elif event.is_action_pressed("werkzeug_wechseln"):
+		_sammler_wechseln()
+
+
+func _sammler_wechseln() -> void:
+	var besessen: Array = []
+	for w in Data.SAMMLER:
+		if Game.sammler.has(w.id):
+			besessen.append(w.id)
+	if besessen.size() < 2:
+		return
+	var i := besessen.find(Game.sammler_aktiv)
+	Game.waehle_sammler(besessen[(i + 1) % besessen.size()])
+	Game.toast.emit(Data.sammler(Game.sammler_aktiv).name, Game.FARBE_INFO)
 
 
 func _eingabe_sitzend(event: InputEvent) -> void:
@@ -223,7 +249,7 @@ func _physics_process(delta: float) -> void:
 		richtung = (transform.basis * Vector3(eingabe.x, 0, eingabe.y)).normalized()
 		if Input.is_action_just_pressed("springen") and is_on_floor():
 			velocity.y = SPRUNG
-	var tempo := RENNEN if Input.is_action_pressed("rennen") else LAUF
+	var tempo := (RENNEN if Input.is_action_pressed("rennen") else LAUF) * Game.lauf_faktor()
 	velocity.x = move_toward(velocity.x, richtung.x * tempo, 40.0 * delta)
 	velocity.z = move_toward(velocity.z, richtung.z * tempo, 40.0 * delta)
 	move_and_slide()
@@ -236,7 +262,7 @@ func _physics_process(delta: float) -> void:
 		_wippen = sin(_zeit * 11.0 * flach / LAUF) * 0.018
 		if _schritt_zeit <= 0.0:
 			_schritt_zeit = 0.42
-			Sfx.spiele("schritt", -16.0, 1.0, 0.12)
+			_schritt_geraeusch()
 	else:
 		_wippen = lerpf(_wippen, 0.0, delta * 8.0)
 	if sitzt:
@@ -245,7 +271,9 @@ func _physics_process(delta: float) -> void:
 		hinweis2 = ""
 	else:
 		_zielen()
+		_berg_zielen()
 	_halten(delta)
+	_sammeln(delta)
 	# Station loslassen, wenn man im Stehen wegschaut
 	if not sitzt and aktive_station and aktive_station.drueckt:
 		if not _schaut_auf_station(aktive_station):
@@ -278,6 +306,96 @@ func _process(delta: float) -> void:
 	if sitzt and sitz_station and not sitz_station.geladen and _nachlege_pause <= 0.0:
 		_nachlegen()
 	_fp_hand.visible = gehalten != null and not sitzt and _blend < 0.05
+	geraet.visible = gehalten == null and not sitzt and _blend < 0.05
+	if geraet.visible:
+		geraet.setze_fuellung(float(Game.beutel_menge()) / float(max(1, Game.kapazitaet())))
+
+
+# =============================================================================
+# Sammeln am Nussberg
+# =============================================================================
+func _berg_zielen() -> void:
+	sammel_punkt = Vector3.INF
+	var berg: Nussberg = welt.get("berg") if welt else null
+	if berg == null:
+		return
+	var w := Game.sammel_werte()
+	var k := _kopf_transform()
+	var anfrage := PhysicsRayQueryParameters3D.create(k.origin, k.origin - k.basis.z * w.reichweite, Data.L_WELT)
+	anfrage.exclude = [get_rid()]
+	var t := get_world_3d().direct_space_state.intersect_ray(anfrage)
+	if t.is_empty() or not berg.ist_berg(t.collider):
+		return
+	sammel_punkt = t.position
+	if hinweis == "" and gehalten == null:
+		if Game.beutel_frei() <= 0:
+			hinweis = "Beutel voll! Ab zum Trichter an der Hütte"
+		else:
+			hinweis = "[Linksklick] halten: Nüsse sammeln"
+		hinweis2 = "%s  ·  %d/%d im Beutel" % [w.name, Game.beutel_menge(), Game.kapazitaet()]
+
+
+func _sammeln(delta: float) -> void:
+	sammelt = false
+	_sammel_ton -= delta
+	_staub_timer -= delta
+	var aktiv := not sitzt and not gesperrt and gehalten == null and sammel_punkt != Vector3.INF \
+		and Input.is_action_pressed("druecken") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+	if Game.selbsttest and has_meta("test_sammeln"):
+		aktiv = not sitzt and gehalten == null and sammel_punkt != Vector3.INF
+	if not aktiv:
+		geraet.arbeitet = false
+		_sammel_acc = 0.0
+		return
+	if Game.beutel_frei() <= 0:
+		geraet.arbeitet = false
+		if not _voll_gemeldet:
+			_voll_gemeldet = true
+			Sfx.spiele("voll", -6.0)
+			Game.toast.emit("Beutel voll! Bring die Nüsse zum Trichter an der Hütte.", Game.FARBE_INFO)
+		return
+	_voll_gemeldet = false
+	geraet.arbeitet = true
+	sammelt = true
+	var w := Game.sammel_werte()
+	var rate: float = w.rate
+	if Game.hat_talent("nusswelle"):
+		_welle_timer += delta
+		if fmod(_welle_timer, 10.0) < 1.0:
+			rate *= 5.0
+	_sammel_acc += rate * delta
+	var n := int(_sammel_acc)
+	if n <= 0:
+		return
+	_sammel_acc -= n
+	n = min(n, Game.beutel_frei())
+	var berg: Nussberg = welt.berg
+	var weg := berg.abbauen(sammel_punkt, w.radius, n)
+	if weg <= 0:
+		return
+	Game.nuesse_vom_berg(weg)
+	var sorten := {}
+	for i in weg:
+		var nuss := Data.zufalls_nuss(Game.genommen, Game.rng)
+		sorten[nuss] = int(sorten.get(nuss, 0)) + 1
+	if randf() < float(w.doppel) * weg:
+		var erste: String = sorten.keys()[0]
+		sorten[erste] = int(sorten[erste]) + 1
+	for nuss in sorten:
+		Game.beutel_hinzu(nuss, int(sorten[nuss]))
+	# Optik und Ton
+	var sichtbar: int = min(weg, 5)
+	var arten: Array = sorten.keys()
+	for i in sichtbar:
+		var von := sammel_punkt + Vector3(randf_range(-1, 1), 0.05, randf_range(-1, 1)) * float(w.radius) * 0.6
+		var abstand := von.distance_to(kamera.global_position)
+		welt.flug.starte(von, arten[i % arten.size()], geraet.beutel_mund, 0.22 + abstand * 0.05, 0.25 + abstand * 0.06)
+	if _sammel_ton <= 0.0:
+		_sammel_ton = 0.12 if geraet.ist_sauger() else 0.22
+		Sfx.spiele("sog" if geraet.ist_sauger() else "schaufeln", -10.0, randf_range(0.9, 1.15), 0.08)
+	if _staub_timer <= 0.0:
+		_staub_timer = 0.35
+		Effekte.staub(welt, sammel_punkt + Vector3(0, 0.05, 0), Color(0.75, 0.6, 0.42, 0.35), 4, 0.25)
 
 
 func wackeln(staerke: float) -> void:
@@ -582,3 +700,15 @@ func blickt_auf_station() -> Knackstation:
 	if sitzt:
 		return sitz_station
 	return _station_von(ziel)
+
+
+## Schrittgeräusch je nach Untergrund: Dielen in der Hütte, Gras im Hof, raschelnde Nüsse am Berg.
+func _schritt_geraeusch() -> void:
+	var p := global_position
+	if p.z > -3.3 and absf(p.x) < 4.5:
+		Sfx.variante("footstep_wood", -14.0, 1.0, 0.06)
+	elif welt and "berg" in welt and welt.berg and welt.berg.hoehe_bei(p.x, p.z) > 0.25:
+		Sfx.variante("footstep_grass", -12.0, 0.8, 0.08)
+		Sfx.spiele("knistern", -26.0, 1.4, 0.2)
+	else:
+		Sfx.variante("footstep_grass", -15.0, 1.0, 0.06)

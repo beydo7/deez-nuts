@@ -14,6 +14,10 @@ const ROHR_OBEN := Vector3(-0.45, 1.5, -2.93)
 const ROHR_UNTEN := Vector3(-0.42, TISCH_Y + 0.17, -2.56)
 const FENSTER_X := Vector2(-0.25, 1.35)
 const FENSTER_Y := Vector2(1.05, 2.15)
+const TUER_X := Vector2(1.75, 2.7)
+const SILO_POS := Vector3(-1.15, 0.0, -4.05)
+const ABGABE_POS := Vector3(-1.15, 0.0, -5.6)
+const ABGABE_RADIUS := 1.25
 
 var spieler: Spieler
 var station: Knackstation
@@ -22,12 +26,20 @@ var menues: Menues
 var glas: Behaelter
 var eimer: Behaelter
 var bruchschale: Behaelter
-var kiste: Behaelter
+var kiste: Behaelter = null
+var berg: Nussberg
+var flug: NussFlug
 
 var _schale_bereich: Area3D
 var _werkstatt_tuer: Node3D
-var _berg: Node3D
 var _berg_text: Label3D
+var _abgaben: Array = []              # {pos, name, knoten}
+var _abliefern_laeuft := false
+var _helfer_knoten: Array = []
+var _silo_fuell: Node3D
+var _silo_text: Label3D
+var _band_nuesse := {}                # posten-id -> [MultiMeshInstance3D, von, bis, phase]
+var _band_aktiv := {}
 var _pinn_zettel: Array = []
 var _maschinen := {}
 var _walzen_status: Label3D
@@ -60,6 +72,8 @@ func _ready() -> void:
 	_rng.randomize()
 	_raubzug_timer = _rng.randf_range(480.0, 720.0)
 	_umgebung()
+	flug = NussFlug.new()
+	add_child(flug)
 	_hof_und_berg()
 	_kueche()
 	_werkstatt()
@@ -77,6 +91,13 @@ func _ready() -> void:
 	Game.maschine_gekauft.connect(_maschine_aufstellen)
 	Game.aera_erreicht.connect(_aera_erreicht)
 	Game.stand_geaendert.connect(_berg_aktualisieren)
+	Game.helfer_gekauft.connect(_helfer_aufstellen)
+	Game.posten_gekauft.connect(_posten_bauen)
+	Game.lager_geaendert.connect(_silo_aktualisieren)
+	for pid in Game.posten:
+		_posten_bauen(pid)
+	_helfer_aufstellen()
+	_silo_aktualisieren()
 	Game.berg_leer.connect(func(): _menue(menues.zeige_ende))
 	station.geknackt.connect(_knack_effekt)
 	for id in Game.maschinen:
@@ -122,15 +143,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		Game.verdiene(5000, false)
 		Game.toast.emit("Testhilfe: +5.000 Münzen", Game.FARBE_INFO)
 	elif event.is_action_pressed("cheat_nuesse"):
-		var n := Game.nuesse_vom_berg(1000)
-		for i in n:
-			Game.melde_knack("wal", "perfekt", false, 2)
-		Game.toast.emit("Testhilfe: +%d Nüsse geknackt" % n, Game.FARBE_INFO)
+		Game.einlagern({"wal": 600, "hasel": 400}, spieler.global_position)
+		Game.toast.emit("Testhilfe: +1.000 Nüsse ins Lager", Game.FARBE_INFO)
 	elif event.is_action_pressed("cheat_mp"):
-		Game.mp += 5
-		Game.mp_gesamt += 5
-		Game.stand_geaendert.emit()
-		Game.toast.emit("Testhilfe: +5 Meisterpunkte", Game.FARBE_INFO)
+		Game.verdiene(50000, false)
+		Game.toast.emit("Testhilfe: +50.000 Münzen", Game.FARBE_INFO)
+	elif event.is_action_pressed("laden"):
+		_menue(menues.zeige_laden)
+		get_viewport().set_input_as_handled()
 
 
 # =============================================================================
@@ -201,92 +221,130 @@ func _hof_und_berg() -> void:
 	add_child(hof)
 	# Boden
 	var boden := PlaneMesh.new()
-	boden.size = Vector2(220, 220)
-	Bau.teil(hof, boden, Look.gras(), Vector3(0, -0.025, -20))
+	boden.size = Vector2(260, 260)
+	Bau.teil(hof, boden, Look.gras(), Vector3(0, -0.025, -30))
 	var bk := StaticBody3D.new()
 	bk.collision_layer = Data.L_WELT
 	var bcs := CollisionShape3D.new()
 	var bb := BoxShape3D.new()
-	bb.size = Vector3(220, 0.2, 220)
+	bb.size = Vector3(260, 0.2, 260)
 	bcs.shape = bb
-	bcs.position = Vector3(0, -0.125, -20)
+	bcs.position = Vector3(0, -0.125, -30)
 	bk.add_child(bcs)
 	hof.add_child(bk)
+	# Der Nussberg (begehbar, abbaubar)
+	berg = Nussberg.new()
+	if not berg.laden(Game.BERG_PFAD):
+		berg.erzeugen()
+		if Game.genommen > 0:
+			berg.an_rest_anpassen(Game.berg_rest())
+	add_child(berg)
 	_grashalme(hof)
-	# Bäume, Zaun, Hügel
-	var farben := [[Color(0.86, 0.48, 0.12), Color(0.6, 0.3, 0.08)], [Color(0.92, 0.7, 0.2), Color(0.6, 0.45, 0.12)],
-		[Color(0.7, 0.22, 0.1), Color(0.45, 0.15, 0.08)], [Color(0.5, 0.58, 0.2), Color(0.3, 0.4, 0.12)]]
-	var baum_pos := [Vector3(-11, 0, -12), Vector3(-15, 0, -22), Vector3(12, 0, -11), Vector3(16, 0, -23), Vector3(-6, 0, -31),
-		Vector3(9, 0, -33), Vector3(-19, 0, -6), Vector3(19, 0, -5), Vector3(-3, 0, -38), Vector3(24, 0, -16), Vector3(-25, 0, -15)]
-	for i in baum_pos.size():
-		var f: Array = farben[i % farben.size()]
-		Einrichtung.baum(hof, baum_pos[i], _rng.randf_range(5.0, 8.0), f[0], f[1], _rng)
-	for i in 22:
-		Einrichtung.tanne(hof, Vector3(-55 + i * 5.2 + _rng.randf_range(-1, 1), 0, -58 + _rng.randf_range(-4, 4)), _rng.randf_range(7, 12))
+	# Bäume rund um den Berg, Zaun, Hügel
+	_hof_ausstatten(hof)
+	for i in 26:
+		Einrichtung.tanne(hof, Vector3(-70 + i * 5.6 + _rng.randf_range(-1, 1), 0, -82 + _rng.randf_range(-4, 4)), _rng.randf_range(7, 12))
 	var huegel := Look.gras()
-	for h in [[Vector3(-40, -8, -75), Vector3(40, 18, 20)], [Vector3(25, -10, -85), Vector3(55, 22, 25)], [Vector3(70, -6, -50), Vector3(30, 14, 30)]]:
-		Bau.teil(hof, Bau.kugel_mesh(1.0, false, 24), huegel, h[0], Vector3.ZERO, h[1])
+	for hg in [[Vector3(-50, -8, -110), Vector3(45, 18, 22)], [Vector3(30, -10, -120), Vector3(60, 22, 25)], [Vector3(85, -6, -70), Vector3(30, 14, 30)], [Vector3(-90, -6, -60), Vector3(30, 14, 30)]]:
+		Bau.teil(hof, Bau.kugel_mesh(1.0, false, 24), huegel, hg[0], Vector3.ZERO, hg[1])
 	var zaunholz := Look.holz(Look.ALTHOLZ, 10.0, 0.0)
-	for i in 36:
-		var x := -18.0 + i
-		Bau.teil(hof, Bau.box_mesh(Vector3(0.09, 1.0, 0.05)), zaunholz, Vector3(x, 0.5, -30), Vector3(0, 0, _rng.randf_range(-3, 3)))
+	for i in 70:
+		var x := -35.0 + i
+		Bau.teil(hof, Bau.box_mesh(Vector3(0.09, 1.0, 0.05)), zaunholz, Vector3(x, 0.5, -64), Vector3(0, 0, _rng.randf_range(-3, 3)))
 	for y in [0.35, 0.8]:
-		Bau.teil(hof, Bau.box_mesh(Vector3(36, 0.08, 0.04)), zaunholz, Vector3(0, y, -29.96))
-	# Der Nussberg
-	_berg = Node3D.new()
-	_berg.position = Vector3(0.8, 0, -17)
-	hof.add_child(_berg)
-	var huegelmesh := Bau.kugel_mesh(1.0, true, 48)
-	Bau.teil(_berg, huegelmesh, Look.nusshaufen(0.2), Vector3.ZERO, Vector3.ZERO, Vector3(6.95, 4.95, 6.95)).layers = 2
-	# Eigenes, schattenloses Licht von vorn, damit der Berg nicht im Gegenlicht versinkt
-	var berglicht := DirectionalLight3D.new()
-	berglicht.rotation_degrees = Vector3(-35, 20, 0)
-	berglicht.light_color = Color(1.0, 0.9, 0.75)
-	berglicht.light_energy = 1.0
-	berglicht.light_cull_mask = 2
-	berglicht.light_volumetric_fog_energy = 0.0
-	add_child(berglicht)
-	for paar in [["wal", 5200, 3.0], ["hasel", 3000, 3.4]]:
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		mm.mesh = Nussmodelle.ganz(paar[0], 0, 0)
-		mm.instance_count = paar[1]
-		for i in mm.instance_count:
-			var theta := _rng.randf() * TAU
-			var phi := acos(sqrt(_rng.randf()))
-			var d := Vector3(sin(phi) * cos(theta), cos(phi), sin(phi) * sin(theta))
-			var p := Vector3(d.x * 7.0, d.y * 5.0, d.z * 7.0) + d * _rng.randf_range(-0.02, 0.1)
-			var basis := Basis.from_euler(Vector3(_rng.randf() * TAU, _rng.randf() * TAU, 0)).scaled(Vector3.ONE * paar[2] * _rng.randf_range(0.8, 1.2))
-			mm.set_instance_transform(i, Transform3D(basis, p))
-			var hell := _rng.randf_range(0.8, 1.15)
-			mm.set_instance_color(i, Color(hell, hell * _rng.randf_range(0.95, 1.02), hell * _rng.randf_range(0.9, 1.0)))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.material_override = Look.nuss(paar[0], false, false, false, true)
-		mmi.layers = 2
-		_berg.add_child(mmi)
-	var schild := Bau.holzschild(hof, "NUSSBERG", Vector3(-5.6, 1.4, -10.5), Vector2(1.6, 0.8), Vector3(0, 25, 0), 150)
-	Bau.teil(hof, Bau.box_mesh(Vector3(0.1, 1.4, 0.1)), Look.holz(Look.ALTHOLZ), Vector3(-5.6, 0.7, -10.55))
+		Bau.teil(hof, Bau.box_mesh(Vector3(70, 0.08, 0.04)), zaunholz, Vector3(0, y, -63.96))
+	# Schild mit dem Zählerstand am Weg zum Berg
+	var schild := Bau.holzschild(hof, "NUSSBERG", Vector3(3.6, 1.6, -7.2), Vector2(1.7, 0.85), Vector3(0, -15, 0), 150)
+	Bau.teil(hof, Bau.box_mesh(Vector3(0.1, 1.6, 0.1)), Look.holz(Look.ALTHOLZ), Vector3(3.6, 0.8, -7.25))
 	_berg_text = Bau.schrift(schild, "", Vector3(0, -0.18, 0.0135), 110, Color(0.35, 0.15, 0.05))
-	# Kompost unter dem Fenster (draußen)
-	var kompost := Area3D.new()
-	kompost.collision_layer = 0
-	kompost.collision_mask = Data.L_ITEM | Data.L_BEHAELTER
-	kompost.position = Vector3(0.55, 0.6, -4.6)
-	var kc := CollisionShape3D.new()
-	var kb := BoxShape3D.new()
-	kb.size = Vector3(8, 2.5, 3)
-	kc.shape = kb
-	kompost.add_child(kc)
-	add_child(kompost)
-	kompost.body_entered.connect(_kompost)
-	var kiste_holz := Look.holz(Look.ALTHOLZ, 9.0, 0.0)
-	for s in [[Vector3(1.6, 0.45, 0.05), Vector3(0, 0.225, -0.5)], [Vector3(1.6, 0.45, 0.05), Vector3(0, 0.225, 0.5)],
-			[Vector3(0.05, 0.45, 1.0), Vector3(-0.8, 0.225, 0)], [Vector3(0.05, 0.45, 1.0), Vector3(0.8, 0.225, 0)]]:
-		Bau.block(self, s[0], Vector3(0.55, 0, -4.4) + s[1], kiste_holz, true)
-	Bau.teil(self, Bau.box_mesh(Vector3(1.55, 0.05, 0.95)), Look.putz(Color(0.25, 0.17, 0.1), Color(0.2, 0.13, 0.08), 40.0), Vector3(0.55, 0.38, -4.4))
+	# Trampelpfad von der Hütte zum Berg
+	for i in 14:
+		var t := float(i) / 13.0
+		var p := Vector3(lerpf(2.2, 1.0, t) + sin(t * 5.0) * 0.4, 0.0, lerpf(-3.6, -11.0, t))
+		Bau.teil(hof, Bau.zylinder_mesh(0.28, 0.32, 0.04, 10), Look.putz(Color(0.64, 0.56, 0.45), Color(0.52, 0.45, 0.36), 40.0), p + Vector3(0, -0.005, 0), Vector3(0, _rng.randf() * 90, 0), Vector3(1.0, 1.0, 0.8))
 
+
+
+## Bäume, Büsche, Steine, Pilze und Holz aus den Modell-Paketen (KayKit Forest, Kenney Nature).
+## Hält Berg, Hütte, Trampelpfad und die Förderband-Strecken frei.
+func _hof_ausstatten(hof: Node3D) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 4711
+	var baeume := ["wald/Tree_1_A_Color1.gltf", "wald/Tree_1_B_Color1.gltf", "wald/Tree_2_A_Color1.gltf", "wald/Tree_2_B_Color1.gltf",
+		"wald/Tree_3_A_Color1.gltf", "wald/Tree_3_B_Color1.gltf", "wald/Tree_1_C_Color1.gltf", "wald/Tree_2_C_Color1.gltf"]
+	var baum_pos := [Vector3(-27, 0, -14), Vector3(-31, 0, -30), Vector3(31, 0, -11), Vector3(33, 0, -31), Vector3(-22, 0, -55),
+		Vector3(19, 0, -57), Vector3(-12, 0, 6), Vector3(14, 0, 8), Vector3(-34, 0, -44), Vector3(36, 0, -44), Vector3(-6, 0, -66),
+		Vector3(9, 0, -66), Vector3(-26, 0, 2), Vector3(26, 0, 3), Vector3(-17, 0, 10), Vector3(20, 0, 12), Vector3(-38, 0, -8),
+		Vector3(39, 0, -22), Vector3(-40, 0, -58), Vector3(40, 0, -58)]
+	for i in baum_pos.size():
+		var p: Vector3 = baum_pos[i]
+		var b := Modelle.setze(hof, baeume[i % baeume.size()], p, r.randf() * 360.0, r.randf_range(1.15, 1.5))
+		if i % 3 != 1:
+			Modelle.herbstlich(b)
+		_stamm_kollision(hof, p, 0.32)
+	# Kleinkram verteilt
+	var deko := [
+		["wald/Bush_1_C_Color1.gltf", 1.0, 1.4, 14], ["wald/Bush_2_C_Color1.gltf", 0.7, 1.0, 8], ["wald/Bush_3_A_Color1.gltf", 1.0, 1.5, 10],
+		["wald/Rock_1_D_Color1.gltf", 0.8, 1.3, 6], ["wald/Rock_2_C_Color1.gltf", 0.6, 1.1, 6], ["wald/Rock_3_A_Color1.gltf", 0.9, 1.4, 5],
+		["wald/Grass_1_C_Color1.gltf", 1.0, 1.4, 40], ["wald/Grass_2_C_Color1.gltf", 0.8, 1.1, 30],
+		["natur/mushroom_redGroup.glb", 2.0, 2.8, 14], ["natur/mushroom_tanGroup.glb", 2.0, 2.8, 12],
+		["natur/flower_redA.glb", 2.5, 3.2, 20], ["natur/flower_yellowA.glb", 2.5, 3.2, 20], ["natur/flower_purpleA.glb", 2.5, 3.2, 16],
+		["natur/stump_old.glb", 2.6, 3.2, 5], ["natur/stump_round.glb", 2.6, 3.2, 4], ["natur/log_large.glb", 2.4, 2.8, 4],
+		["natur/crop_pumpkin.glb", 2.0, 2.6, 6]]
+	for d in deko:
+		var gesetzt := 0
+		var versuche := 0
+		while gesetzt < int(d[3]) and versuche < 400:
+			versuche += 1
+			var p := Vector3(r.randf_range(-42, 44), 0, r.randf_range(-62, 14))
+			if not _hof_frei(p, 1.2):
+				continue
+			var m := Modelle.setze(hof, d[0], p, r.randf() * 360.0, r.randf_range(d[1], d[2]))
+			if str(d[0]).contains("Bush") and r.randf() < 0.45:
+				Modelle.herbstlich(m)
+			gesetzt += 1
+	# Holzlager und Fässer neben dem Silo
+	Modelle.setze(hof, "rohstoffe/Wood_Log_Stack.gltf", Vector3(-3.6, 0, -4.6), 90.0, 0.9)
+	Modelle.setze(hof, "rohstoffe/Pallet_Wood.gltf", Vector3(1.2, 0, -4.5), 8.0, 0.8)
+	Modelle.setze(hof, "kueche/bag.glb", Vector3(1.0, 0.24, -4.4), 30.0, 1.5)
+	Modelle.setze(hof, "kueche/bag.glb", Vector3(1.45, 0.24, -4.65), -50.0, 1.4)
+	Modelle.setze(hof, "kueche/barrel.glb", Vector3(-3.4, 0, -6.6), 0.0, 1.2).rotation_degrees.x = 0.0
+	Modelle.setze(hof, "natur/log_stack.glb", Vector3(5.2, 0, -3.9), 90.0, 2.6)
+
+
+## Ist hier Platz für Deko? Nicht auf dem Berg, nicht an der Hütte, nicht auf Wegen oder Bändern.
+func _hof_frei(p: Vector3, abstand: float) -> bool:
+	var mitte := Nussberg.MITTE
+	if Vector2(p.x - mitte.x, p.z - mitte.z).length() < Nussberg.RADIUS + 2.5:
+		return false
+	if p.x > -7.0 and p.x < 7.5 and p.z > -10.0 and p.z < 5.5:
+		return false
+	if p.z < -63.0:
+		return false
+	for po in Data.POSTEN:
+		var punkte: Array = [po.pos] + po.weg + [ABGABE_POS]
+		if Vector2(p.x - po.pos.x, p.z - po.pos.z).length() < 4.0 + abstand:
+			return false
+		for i in punkte.size() - 1:
+			var a := Vector2(punkte[i].x, punkte[i].z)
+			var b := Vector2(punkte[i + 1].x, punkte[i + 1].z)
+			var q := Geometry2D.get_closest_point_to_segment(Vector2(p.x, p.z), a, b)
+			if q.distance_to(Vector2(p.x, p.z)) < 1.5 + abstand:
+				return false
+	return true
+
+
+func _stamm_kollision(eltern: Node3D, pos: Vector3, radius: float) -> void:
+	var k := StaticBody3D.new()
+	k.collision_layer = Data.L_WELT
+	var cs := CollisionShape3D.new()
+	var z := CylinderShape3D.new()
+	z.radius = radius
+	z.height = 3.0
+	cs.shape = z
+	k.add_child(cs)
+	k.position = pos + Vector3(0, 1.5, 0)
+	eltern.add_child(k)
 
 func _grashalme(hof: Node3D) -> void:
 	var halm := ArrayMesh.new()
@@ -305,10 +363,15 @@ func _grashalme(hof: Node3D) -> void:
 	mm.use_colors = true
 	mm.mesh = halm
 	var liste: Array = []
-	while liste.size() < 14000:
-		var p := Vector3(_rng.randf_range(-14, 14), 0, _rng.randf_range(-3.4, -28))
-		var zum_berg := Vector2(p.x - 0.8, p.z + 17).length()
-		if zum_berg < 7.3 or (absf(p.x - 0.55) < 0.95 and p.z > -5.0):
+	var versuche := 0
+	while liste.size() < 16000 and versuche < 80000:
+		versuche += 1
+		var p := Vector3(_rng.randf_range(-30, 32), 0, _rng.randf_range(10, -60))
+		if absf(p.x - 3.5) < 7.2 and p.z > -3.4 and p.z < 3.4:
+			continue
+		if berg.hoehe_bei(p.x, p.z) > 0.02:
+			continue
+		if Vector2(p.x - Nussberg.MITTE.x, (p.z - Nussberg.MITTE.z) * 1.08).length() < Nussberg.RADIUS * 0.92:
 			continue
 		liste.append(p)
 	mm.instance_count = liste.size()
@@ -325,13 +388,13 @@ func _grashalme(hof: Node3D) -> void:
 
 
 func _berg_aktualisieren() -> void:
-	if _berg == null:
-		return
-	var rest := float(Game.berg_rest()) / Data.BERG_GROESSE
-	var s := 0.18 + 0.82 * pow(rest, 1.0 / 3.0)
-	_berg.scale = Vector3(s, s, s)
-	_berg.visible = rest > 0.0
-	_berg_text.text = Data.zahl(Game.berg_rest())
+	if _berg_text:
+		_berg_text.text = Data.zahl(Game.berg_rest())
+
+
+func berg_speichern(pfad: String) -> void:
+	if berg:
+		berg.speichern(pfad)
 
 
 # =============================================================================
@@ -351,7 +414,10 @@ func _kueche() -> void:
 		Bau.block(k, Vector3(6.0, 0.18, 0.16), Vector3(0, 2.91, bz), Look.holz(Look.NUSSBAUM, 5.0), false)
 	# Nordwand mit Fenster
 	_wand(k, Vector3(-3.1, 0, -3.1), Vector3(FENSTER_X.x, 3, -2.9), wand)
-	_wand(k, Vector3(FENSTER_X.y, 0, -3.1), Vector3(3.1, 3, -2.9), wand)
+	_wand(k, Vector3(FENSTER_X.y, 0, -3.1), Vector3(TUER_X.x, 3, -2.9), wand)
+	_wand(k, Vector3(TUER_X.y, 0, -3.1), Vector3(3.1, 3, -2.9), wand)
+	_wand(k, Vector3(TUER_X.x, 2.25, -3.1), Vector3(TUER_X.y, 3, -2.9), wand)
+	_haustuer(k)
 	_wand(k, Vector3(FENSTER_X.x, 0, -3.1), Vector3(FENSTER_X.y, FENSTER_Y.x, -2.9), wand)
 	_wand(k, Vector3(FENSTER_X.x, FENSTER_Y.y, -3.1), Vector3(FENSTER_X.y, 3, -2.9), wand)
 	_fenster(k)
@@ -383,7 +449,7 @@ func _kueche() -> void:
 	Bau.block(k, Vector3(0.03, 0.95, 0.85), Vector3(-2.885, 0.475, -0.35), holz_wand, false)
 	Bau.block(k, Vector3(0.03, 0.95, 1.3), Vector3(-2.885, 0.475, -2.3), holz_wand, false)
 	Bau.block(k, Vector3(2.75, 0.95, 0.03), Vector3(-1.72, 0.475, -2.885), holz_wand, false)
-	Bau.block(k, Vector3(1.6, 0.95, 0.03), Vector3(2.15, 0.475, -2.885), holz_wand, false)
+	Bau.block(k, Vector3(TUER_X.x - FENSTER_X.y - 0.1, 0.95, 0.03), Vector3((TUER_X.x + FENSTER_X.y) * 0.5 - 0.05, 0.475, -2.885), holz_wand, false)
 	Bau.block(k, Vector3(1.6, 0.95, 0.03), Vector3(FENSTER_X.x + 0.8, 0.475, -2.885), holz_wand, false)
 	Bau.block(k, Vector3(0.03, 0.95, 1.85), Vector3(2.885, 0.475, -2.0), holz_wand, false)
 	Bau.block(k, Vector3(0.03, 0.95, 1.85), Vector3(2.885, 0.475, 2.0), holz_wand, false)
@@ -486,20 +552,21 @@ func _kueche() -> void:
 	for zw in [[-0.17, -0.02], [0.0, 0.06], [0.17, -0.01], [-0.08, 0.13], [0.09, 0.14]]:
 		Bau.teil(tafel, Bau.kugel_mesh(0.09, false, 14), Look.plastik(Color(0.45, 0.62, 0.26), 0.9), Vector3(zw[0], zw[1], 0.03), Vector3.ZERO, Vector3(1, 1, 0.08))
 	Bau.schrift(tafel, "OPAS TALENTBAUM", Vector3(0, 0.31, 0.034), 56, Color(0.3, 0.16, 0.06))
-	var tt := Interaktiv.erzeuge(tafel, Vector3(1.3, 0.95, 0.2), Vector3.ZERO, "Opas Talentbaum ansehen", func(_s): _menue(menues.zeige_talente))
-	tt.info = func(): return "%d Meisterpunkte zu vergeben" % Game.mp
+	var tt := Interaktiv.erzeuge(tafel, Vector3(1.3, 0.95, 0.2), Vector3.ZERO, "Opas Notizbuch (Skillbaum)", func(_s): _menue(menues.zeige_talente))
+	tt.info = func(): return "%d Skills gelernt  ·  auch mit [Tab]" % Game.skills.size()
 	# Deko
 	_uhr_zeiger = Einrichtung.uhr(k, Vector3(2.88, 2.68, 0.0), -90)
-	var regal := Einrichtung.regal(k, Vector3(2.1, 1.45, -2.9), 1.3, 2)
+	var regal := Einrichtung.regal(k, Vector3(2.9, 1.45, 2.05), 1.3, 2, -90)
 	var sorten := ["wal", "hasel", "mandel", "wal", "pekan", "hasel"]
 	for i in 6:
 		Einrichtung.vorratsglas(regal, Vector3(-0.45 + (i % 3) * 0.42, (i / 3) * 0.4 + 0.013, 0.12), sorten[i], _rng.randf_range(0.4, 0.95), 0.2 + (i % 2) * 0.05)
 	Einrichtung.sack(k, Vector3(-2.45, 0, -2.45), 0.6)
 	Einrichtung.sack(k, Vector3(-2.0, 0, -2.6), -0.3, "hasel")
 	Einrichtung.sack(k, Vector3(-2.5, 0, -1.95), 1.4)
+	_draussen(k)
 	Einrichtung.sessel(k, Vector3(-2.2, 0, 2.2), 135)
 	Einrichtung.teppich(k, Vector3(-1.9, 0, 1.9), Vector2(1.5, 1.5), Color(0.3, 0.42, 0.55), Color(0.22, 0.32, 0.45))
-	Einrichtung.pflanze(k, Vector3(2.55, 0, 2.55), 2.2)
+	Einrichtung.pflanze(k, Vector3(2.55, 0, -2.55), 2.2)
 	# Bild von Opa
 	var bild := Node3D.new()
 	bild.position = Vector3(-1.3, 1.85, 2.88)
@@ -541,6 +608,114 @@ func _fenster(k: Node3D) -> void:
 	Einrichtung.vorhang(k, Vector3(FENSTER_X.y + 0.2, FENSTER_Y.y + 0.15, -2.82), h + 0.45, Color(0.85, 0.3, 0.22))
 	Bau.teil(k, Bau.zylinder_mesh(0.012, 0.012, b + 0.9, 8), Look.metall(Color(0.6, 0.45, 0.25)), Vector3(mx, FENSTER_Y.y + 0.17, -2.82), Vector3(0, 0, 90))
 	Einrichtung.pflanze(k, Vector3(FENSTER_X.y - 0.12, FENSTER_Y.x, -2.95), 0.9)
+
+
+func _haustuer(k: Node3D) -> void:
+	var weiss := Look.lackiert(Color(0.93, 0.91, 0.86), 0.5)
+	for x in [TUER_X.x - 0.04, TUER_X.y + 0.04]:
+		Bau.block(k, Vector3(0.08, 2.3, 0.24), Vector3(x, 1.15, -3.0), weiss, false)
+	Bau.block(k, Vector3(TUER_X.y - TUER_X.x + 0.16, 0.08, 0.24), Vector3((TUER_X.x + TUER_X.y) * 0.5, 2.29, -3.0), weiss, false)
+	# offene Tür, nach außen geklappt
+	var tuer := Node3D.new()
+	tuer.position = Vector3(TUER_X.y, 0, -3.12)
+	tuer.rotation_degrees.y = -100
+	k.add_child(tuer)
+	Bau.block(tuer, Vector3(TUER_X.y - TUER_X.x, 2.2, 0.05), Vector3(-(TUER_X.y - TUER_X.x) * 0.5, 1.1, -0.03), Look.lackiert(Color(0.24, 0.45, 0.32), 0.3))
+	Bau.teil(tuer, Bau.kugel_mesh(0.035, false, 12), Look.metall(Color(0.75, 0.6, 0.3)), Vector3(-(TUER_X.y - TUER_X.x) + 0.1, 1.05, -0.07))
+	# Stufe vor der Tür
+	Bau.block(k, Vector3(1.3, 0.08, 0.6), Vector3((TUER_X.x + TUER_X.y) * 0.5, 0.0, -3.45), Look.putz(Color(0.6, 0.58, 0.52), Color(0.5, 0.48, 0.44), 40.0))
+
+
+## Alles direkt vor der Hütte: Nusssilo mit Trichter, Abgabekreis, Bestellbrett, Dach.
+func _draussen(k: Node3D) -> void:
+	var holz := Look.holz(Look.ALTHOLZ, 9.0, 0.1)
+	var dunkel := Look.holz(Look.NUSSBAUM, 6.0, 0.2)
+	var silo := Node3D.new()
+	silo.position = SILO_POS
+	k.add_child(silo)
+	Bau.block(silo, Vector3(1.6, 1.5, 1.4), Vector3(0, 0.75, 0), holz)
+	for x in [-0.8, 0.8]:
+		for z in [-0.7, 0.7]:
+			Bau.teil(silo, Bau.box_mesh(Vector3(0.1, 1.55, 0.1)), dunkel, Vector3(x, 0.77, z))
+	# Sichtfenster mit Füllstand
+	Bau.teil(silo, Bau.box_mesh(Vector3(0.5, 1.2, 0.02)), Look.glas(), Vector3(0, 0.75, -0.715))
+	_silo_fuell = Node3D.new()
+	_silo_fuell.position = Vector3(0, 0.15, -0.69)
+	silo.add_child(_silo_fuell)
+	Bau.teil(_silo_fuell, Bau.box_mesh(Vector3(0.48, 1.0, 0.02)), Look.nusshaufen(0.05), Vector3(0, 0.5, 0))
+	# Trichter oben drauf
+	var trichter := CylinderMesh.new()
+	trichter.top_radius = 0.95
+	trichter.bottom_radius = 0.35
+	trichter.height = 0.55
+	trichter.cap_top = false
+	trichter.radial_segments = 4
+	var tm := Look.metall(Color(0.62, 0.65, 0.68), 0.45).duplicate() as StandardMaterial3D
+	tm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	Bau.teil(silo, trichter, tm, Vector3(0, 1.78, -0.1), Vector3(0, 45, 0))
+	Bau.holzschild(silo, "ABGABE", Vector3(0, 1.32, -0.72), Vector2(0.9, 0.22), Vector3(0, 180, 0), 90)
+	_silo_text = Bau.schrift(silo, "", Vector3(0, 0.12, -0.73), 48, Color(1.0, 0.95, 0.8), Vector3(0, 180, 0), 600)
+	_silo_text.outline_size = 8
+	_silo_text.outline_modulate = Color(0.15, 0.08, 0.03)
+	# Abgabekreis am Boden
+	var ring := TorusMesh.new()
+	ring.inner_radius = ABGABE_RADIUS - 0.08
+	ring.outer_radius = ABGABE_RADIUS
+	ring.rings = 48
+	var rm := Bau.teil(k, ring, Look.leuchten(Color(1.0, 0.8, 0.25), 1.5), ABGABE_POS + Vector3(0, 0.02, 0), Vector3.ZERO, Vector3(1, 0.15, 1))
+	rm.set_meta("ohne_rand", true)
+	rm.name = "Abgabekreis"
+	var flaeche := CylinderMesh.new()
+	flaeche.top_radius = ABGABE_RADIUS
+	flaeche.bottom_radius = ABGABE_RADIUS
+	flaeche.height = 0.01
+	var fm := StandardMaterial3D.new()
+	fm.albedo_color = Color(1.0, 0.8, 0.3, 0.18)
+	fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	Bau.teil(k, flaeche, fm, ABGABE_POS + Vector3(0, 0.012, 0))
+	_abgaben.append({"pos": ABGABE_POS, "name": "Trichter", "ziel": SILO_POS + Vector3(0, 1.9, 0)})
+	# Bestellbrett (Laden) neben dem Silo
+	var brett := Node3D.new()
+	brett.position = Vector3(-2.75, 0, -4.2)
+	brett.rotation_degrees.y = 200
+	k.add_child(brett)
+	for x in [-0.55, 0.55]:
+		Bau.teil(brett, Bau.box_mesh(Vector3(0.08, 1.9, 0.08)), dunkel, Vector3(x, 0.95, 0))
+	Bau.teil(brett, Bau.box_mesh(Vector3(1.3, 0.95, 0.05)), Look.putz(Color(0.2, 0.24, 0.2), Color(0.16, 0.19, 0.16), 120.0, 0.0, 0.9), Vector3(0, 1.35, 0.03))
+	Bau.teil(brett, Bau.box_mesh(Vector3(1.4, 0.06, 0.08)), dunkel, Vector3(0, 1.85, 0.03))
+	Bau.schrift(brett, "BESTELLBRETT\nWerkzeug · Beutel · Helfer", Vector3(0, 1.45, -0.0), 44, Color(0.95, 0.95, 0.9), Vector3(0, 180, 0), 500)
+	var bi := Interaktiv.erzeuge(brett, Vector3(1.4, 1.0, 0.4), Vector3(0, 1.35, 0), "Bestellbrett: Werkzeug, Beutel, Helfer", func(_s): _menue(menues.zeige_laden))
+	bi.info = func(): return "%s Münzen" % Data.zahl(Game.muenzen)
+	# Dach über Küche und Werkstatt
+	var ziegel := Look.putz(Color(0.62, 0.24, 0.16), Color(0.5, 0.18, 0.12), 30.0, 0.35, 0.8)
+	for seite in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(6.8, 0.12, 4.3)), ziegel, Vector3(0, 4.15, seite * 1.75), Vector3(seite * 38.0, 0, 0))
+		Bau.teil(k, Bau.box_mesh(Vector3(7.6, 0.12, 4.3)), ziegel, Vector3(6.5, 4.15, seite * 1.75), Vector3(seite * 38.0, 0, 0))
+	var gm := Look.putz(Color(0.93, 0.86, 0.72), Color(0.84, 0.75, 0.6), 70.0)
+	for x in [-3.0, 3.0, 10.0]:
+		_giebel(k, x, gm)
+	Bau.teil(k, Bau.box_mesh(Vector3(1.0, 1.4, 0.8)), Look.putz(Color(0.55, 0.3, 0.22), Color(0.45, 0.24, 0.18), 20.0, 0.12, 0.9), Vector3(-1.8, 4.6, 1.4))
+
+
+## Dreieckige Giebelwand (Prisma) quer zur x-Achse.
+func _giebel(eltern: Node3D, x: float, material: Material) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var unten := 3.0
+	var oben := 5.35
+	var b := 3.1
+	var d := 0.1
+	var vorn := [Vector3(x - d, unten, -b), Vector3(x - d, oben, 0), Vector3(x - d, unten, b)]
+	var hinten := [Vector3(x + d, unten, -b), Vector3(x + d, oben, 0), Vector3(x + d, unten, b)]
+	for tri in [[vorn[0], vorn[1], vorn[2]], [hinten[2], hinten[1], hinten[0]]]:
+		for v in tri:
+			st.add_vertex(v)
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = material
+	eltern.add_child(mi)
 
 
 func _verkaufsklappe(k: Node3D) -> void:
@@ -618,16 +793,27 @@ func _werkstatt() -> void:
 # Behälter
 # =============================================================================
 func _behaelter_anlegen() -> void:
-	glas = _neuer_behaelter("glas", GLAS_POS, Game.hat_maschine("grosses_glas"))
+	glas = _neuer_behaelter("glas", GLAS_POS)
 	bruchschale = _neuer_behaelter("bruch", BRUCH_POS)
 	eimer = _neuer_behaelter("eimer", EIMER_POS)
-	kiste = _neuer_behaelter("kiste", Vector3(7.4, 0.0, -1.4))
 	glas.setze_deckel(Game.hat_maschine("deckel"))
 	var gespeichert: Dictionary = Game.behaelter
-	for paar in [["glas", glas], ["eimer", eimer], ["bruch", bruchschale], ["kiste", kiste]]:
+	for paar in [["glas", glas], ["eimer", eimer], ["bruch", bruchschale]]:
 		if gespeichert.has(paar[0]):
 			paar[1].aus_dict(gespeichert[paar[0]])
 	glas.geaendert.connect(_glas_geaendert)
+	# Die Rohrpost über dem Glas verkauft volle Gläser von selbst
+	var messing := Look.metall(Color(0.85, 0.66, 0.32), 0.25)
+	var oben := GLAS_POS + Vector3(0, 0.62, 0)
+	Bau.teil(self, Bau.zylinder_mesh(0.07, 0.07, 3.0 - oben.y, 20), messing, Vector3(oben.x, (3.0 + oben.y) * 0.5, oben.z))
+	var glocke := CylinderMesh.new()
+	glocke.top_radius = 0.07
+	glocke.bottom_radius = 0.16
+	glocke.height = 0.14
+	glocke.cap_bottom = false
+	var gm := messing.duplicate() as StandardMaterial3D
+	gm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	Bau.teil(self, glocke, gm, oben + Vector3(0, -0.05, 0))
 
 
 func _neuer_behaelter(typ: String, pos: Vector3, gross := false) -> Behaelter:
@@ -639,16 +825,12 @@ func _neuer_behaelter(typ: String, pos: Vector3, gross := false) -> Behaelter:
 
 
 func behaelter_speichern() -> Dictionary:
-	return {"glas": glas.als_dict(), "eimer": eimer.als_dict(), "bruch": bruchschale.als_dict(), "kiste": kiste.als_dict()}
+	return {"glas": glas.als_dict(), "eimer": eimer.als_dict(), "bruch": bruchschale.als_dict()}
 
 
 func _glas_geaendert() -> void:
 	if glas.voll() and not _glas_war_voll:
 		_glas_war_voll = true
-		Game.ziel_melden("glas_voll")
-		if not Game.hat_maschine("rohrpost"):
-			Game.toast.emit("Das Glas ist voll! Bring es zur Verkaufsklappe.", Game.FARBE_INFO)
-			Sfx.spiele("voll", -4.0)
 	elif not glas.voll():
 		_glas_war_voll = false
 
@@ -660,16 +842,11 @@ func _maschine_aufstellen(id: String, neu := true) -> void:
 	match id:
 		"deckel":
 			glas.setze_deckel(true)
-		"grosses_glas":
-			var gespeichert := glas.als_dict()
-			glas.setze_gross(true)
-			glas.aus_dict(gespeichert)
 		"rutsche":
 			var r := Node3D.new()
 			add_child(r)
 			var blech := Look.metall(Color(0.72, 0.74, 0.77), 0.3)
 			var gelb := Look.lackiert(Color(0.85, 0.62, 0.15), 0.5)
-			# kleine Blechrinne von der Schale zum Brett und ein Motorkästchen am Rohr
 			var rinne := Node3D.new()
 			rinne.position = Vector3(SCHALE_POS.x + 0.235, TISCH_Y + 0.035, SCHALE_POS.z + 0.02)
 			rinne.rotation_degrees.z = -10
@@ -687,57 +864,15 @@ func _maschine_aufstellen(id: String, neu := true) -> void:
 			_maschinen[id] = katze
 			if neu:
 				Sfx.spiele("miau")
-		"rohrpost":
-			var rp := Node3D.new()
-			add_child(rp)
-			var messing := Look.metall(Color(0.85, 0.66, 0.32), 0.25)
-			var oben := GLAS_POS + Vector3(0, 0.62, 0)
-			Bau.teil(rp, Bau.zylinder_mesh(0.07, 0.07, 3.0 - oben.y, 20), messing, Vector3(oben.x, (3.0 + oben.y) * 0.5, oben.z))
-			var glocke := CylinderMesh.new()
-			glocke.top_radius = 0.07
-			glocke.bottom_radius = 0.16
-			glocke.height = 0.14
-			glocke.cap_bottom = false
-			var gm := messing.duplicate() as StandardMaterial3D
-			gm.cull_mode = BaseMaterial3D.CULL_DISABLED
-			Bau.teil(rp, glocke, gm, oben + Vector3(0, -0.05, 0))
-			_maschinen[id] = rp
 		"sieb":
-			var s := Node3D.new()
-			s.position = station.global_position + Vector3(0.33, 0.0, 0.1)
-			add_child(s)
+			var sb := Node3D.new()
+			sb.position = station.global_position + Vector3(0.33, 0.0, 0.1)
+			add_child(sb)
 			var stahl := Look.metall(Color(0.72, 0.74, 0.77), 0.3)
-			Bau.teil(s, Bau.box_mesh(Vector3(0.13, 0.008, 0.13)), stahl, Vector3(0, 0.004, 0))
+			Bau.teil(sb, Bau.box_mesh(Vector3(0.13, 0.008, 0.13)), stahl, Vector3(0, 0.004, 0))
 			for i in 6:
-				Bau.teil(s, Bau.box_mesh(Vector3(0.004, 0.012, 0.13)), Look.metall(Color(0.35, 0.35, 0.37)), Vector3(-0.055 + i * 0.022, 0.01, 0))
-			_maschinen[id] = s
-		"ofen":
-			var o := Node3D.new()
-			o.position = Vector3(4.3, 0, -2.3)
-			add_child(o)
-			var guss := Look.metall(Color(0.16, 0.15, 0.15), 0.6)
-			Bau.block(o, Vector3(1.0, 0.95, 0.8), Vector3(0, 0.5, 0), guss)
-			Bau.teil(o, Bau.box_mesh(Vector3(0.5, 0.3, 0.02)), Look.leuchten(Color(1.0, 0.45, 0.1), 3.0), Vector3(0, 0.45, 0.41))
-			Bau.teil(o, Bau.zylinder_mesh(0.12, 0.12, 2.0, 16), guss, Vector3(0, 2.0, -0.2))
-			_ofen_licht = OmniLight3D.new()
-			_ofen_licht.position = Vector3(0, 0.5, 0.7)
-			_ofen_licht.light_color = Color(1.0, 0.5, 0.15)
-			_ofen_licht.light_energy = 0.8
-			_ofen_licht.omni_range = 3.0
-			o.add_child(_ofen_licht)
-			var a := Area3D.new()
-			a.collision_layer = 0
-			a.collision_mask = Data.L_BEHAELTER
-			a.position = Vector3(0, 1.2, 0)
-			var cs := CollisionShape3D.new()
-			var b := BoxShape3D.new()
-			b.size = Vector3(1.2, 0.6, 1.0)
-			cs.shape = b
-			a.add_child(cs)
-			o.add_child(a)
-			a.body_entered.connect(_ofen_betreten)
-			Bau.holzschild(o, "SCHALENOFEN", Vector3(0, 1.15, 0.42), Vector2(0.6, 0.15), Vector3.ZERO, 60)
-			_maschinen[id] = o
+				Bau.teil(sb, Bau.box_mesh(Vector3(0.004, 0.012, 0.13)), Look.metall(Color(0.35, 0.35, 0.37)), Vector3(-0.055 + i * 0.022, 0.01, 0))
+			_maschinen[id] = sb
 		"walze":
 			var wz := Node3D.new()
 			wz.position = Vector3(6.4, 0, -2.4)
@@ -746,42 +881,21 @@ func _maschine_aufstellen(id: String, neu := true) -> void:
 			var stahl := Look.metall(Color(0.7, 0.72, 0.75), 0.3)
 			Bau.block(wz, Vector3(1.0, 0.8, 0.7), Vector3(0, 0.4, 0), blau)
 			Bau.teil(wz, Bau.zylinder_mesh(0.35, 0.12, 0.4, 4), stahl, Vector3(0, 1.0, 0), Vector3(0, 45, 0))
-			Bau.teil(wz, Bau.zylinder_mesh(0.08, 0.08, 1.6, 12), stahl, Vector3(0, 1.75, -0.4), Vector3(30, 0, 0))
 			_walzen_rollen.clear()
 			for x in [-0.12, 0.12]:
-				var rolle := Bau.teil(wz, Bau.zylinder_mesh(0.1, 0.1, 0.6, 16), stahl, Vector3(x, 0.85, 0.0), Vector3(0, 0, 90))
-				_walzen_rollen.append(rolle)
-			_walzen_status = Bau.schild(wz, "", Vector3(0, 1.45, 0.4), 40, Color(1, 0.95, 0.8), true)
+				_walzen_rollen.append(Bau.teil(wz, Bau.zylinder_mesh(0.1, 0.1, 0.6, 16), stahl, Vector3(x, 0.85, 0.0), Vector3(0, 0, 90)))
+			# Rohr vom Silo durch die Wand
+			Einrichtung.rohr(wz, Vector3(6.4, 1.3, -2.4), Vector3(6.4, 2.8, -2.4), 0.07, stahl)
+			_walzen_status = Bau.schild(wz, "", Vector3(0, 1.55, 0.4), 40, Color(1, 0.95, 0.8), true)
 			_walzen_status.font = Look.schrift(500)
 			_maschinen[id] = wz
-		"band":
-			var bd := Node3D.new()
-			add_child(bd)
-			Bau.teil(bd, Bau.box_mesh(Vector3(2.3, 0.06, 0.5)), Look.plastik(Color(0.12, 0.12, 0.13), 0.7), Vector3(8.75, 0.85, -1.8))
-			for x in 6:
-				Bau.teil(bd, Bau.box_mesh(Vector3(0.05, 0.82, 0.05)), Look.metall(Color(0.4, 0.4, 0.42)), Vector3(7.7 + x * 0.42, 0.41, -1.8))
-			_maschinen[id] = bd
-		"laufrad":
-			var lr := Node3D.new()
-			lr.position = Vector3(8.5, 0, 1.8)
-			add_child(lr)
-			Bau.block(lr, Vector3(0.1, 1.0, 0.1), Vector3(0, 0.5, -0.25), Look.holz(Look.NUSSBAUM))
-			_laufrad_rad = Node3D.new()
-			_laufrad_rad.position = Vector3(0, 0.6, 0)
-			lr.add_child(_laufrad_rad)
-			var torus := TorusMesh.new()
-			torus.inner_radius = 0.42
-			torus.outer_radius = 0.48
-			Bau.teil(_laufrad_rad, torus, Look.holz(Look.EICHE), Vector3.ZERO, Vector3(90, 0, 0))
-			for i in 6:
-				Bau.teil(_laufrad_rad, Bau.box_mesh(Vector3(0.02, 0.9, 0.02)), Look.holz(Look.KIEFER), Vector3.ZERO, Vector3(0, 0, i * 30.0))
-			var tier := Eichhoernchen.new()
-			tier.set_process(false)
-			tier.position = Vector3(0, -0.45, 0)
-			lr.add_child(tier)
-			tier.remove_from_group("eichhoernchen")
-			Bau.holzschild(lr, "LAUFRAD", Vector3(0, 1.3, 0), Vector2(0.5, 0.15), Vector3.ZERO, 60)
-			_maschinen[id] = lr
+		"lagerhalle":
+			var lh := Node3D.new()
+			add_child(lh)
+			Bau.block(lh, Vector3(2.2, 2.4, 1.8), SILO_POS + Vector3(-2.3, 1.2, 0.0), Look.holz(Look.ALTHOLZ, 9.0, 0.1))
+			Bau.teil(lh, Bau.box_mesh(Vector3(2.4, 0.12, 2.0)), Look.putz(Color(0.62, 0.24, 0.16), Color(0.5, 0.18, 0.12), 30.0, 0.35, 0.8), SILO_POS + Vector3(-2.3, 2.46, 0.0))
+			Bau.holzschild(lh, "LAGERHALLE", SILO_POS + Vector3(-2.3, 1.9, -0.92), Vector2(1.2, 0.22), Vector3(0, 180, 0), 80)
+			_maschinen[id] = lh
 
 
 func _process(delta: float) -> void:
@@ -789,14 +903,9 @@ func _process(delta: float) -> void:
 		_hebel_sperre -= delta
 	_rutsche(delta)
 	_walze(delta)
-	_band(delta)
-	_rohrpost()
-	if Game.hat_maschine("laufrad"):
-		Game.energie += delta
-		if _laufrad_rad:
-			_laufrad_rad.rotate_z(-delta * 4.0)
-	if _ofen_licht:
-		_ofen_licht.light_energy = 0.4 + min(Game.energie, 200.0) / 200.0 * 1.6 + randf() * 0.15
+	_glas_auto()
+	_abgaben_pruefen()
+	_baender_bewegen(delta)
 	_eichhoernchen_steuern(delta)
 	_pinn_timer -= delta
 	if _pinn_timer <= 0.0:
@@ -813,18 +922,21 @@ func _ziele_pruefen() -> void:
 	if z.is_empty():
 		return
 	match z.id:
-		"hinsetzen":
-			if spieler.sitzt:
-				Game.ziel_melden("hinsetzen")
-		"hebel":
-			if _nuesse_in_schale() > 0 or station.geladen:
-				Game.ziel_melden("hebel")
-		"glas_voll":
-			if glas.voll():
-				Game.ziel_melden("glas_voll")
-		"kaufen":
-			if Game.werkzeuge.size() > 1:
-				Game.ziel_melden("kaufen")
+		"berg":
+			if spieler.global_position.z < -6.0:
+				Game.ziel_melden("berg")
+		"voll":
+			if Game.beutel_frei() == 0:
+				Game.ziel_melden("voll")
+		"loeffel":
+			if Game.sammler.has("loeffel"):
+				Game.ziel_melden("loeffel")
+		"beutel":
+			if Game.beutel_id != "taschen":
+				Game.ziel_melden("beutel")
+		"skill":
+			if not Game.skills.is_empty():
+				Game.ziel_melden("skill")
 
 
 func _uhr_stellen() -> void:
@@ -842,15 +954,22 @@ func _rutsche(delta: float) -> void:
 	if _rutsche_timer > 0.0:
 		return
 	var stufe: int = max(0, Game.maschinen_stufe("rutsche"))
-	_rutsche_timer = 2.0 / ((1.0 + 0.25 * stufe) * Game.maschinen_tempo())
-	if _nuesse_in_schale() < 4 and _hebel_sperre <= 0.0:
+	_rutsche_timer = 2.0 / ((1.0 + 0.25 * stufe) * Game.rutschen_tempo())
+	if _nuesse_in_schale() < 4 and _hebel_sperre <= 0.0 and Game.lager_menge() > 0:
 		hebel_ziehen(true)
 	elif station.kann_laden() and not station.drueckt and not spieler.sitzt:
 		nuss_nachlegen(station)
 
 
-func _rohrpost() -> void:
-	if not Game.hat_maschine("rohrpost") or _rohrpost_laeuft:
+## Ein volles Glas (oder eine volle Bruchschale) saust durch die Rohrpost und wird verkauft.
+func _glas_auto() -> void:
+	if not bruchschale.gehalten and bruchschale.voll() and not bruchschale.freeze:
+		_verkaufe(bruchschale, false)
+	if not eimer.gehalten and eimer.voll():
+		Game.verdiene(eimer.schalen * 0.2, false)
+		Game.toast.emit("Schaleneimer auf den Kompost gekippt (+%s)" % Data.zahl(eimer.schalen * 0.2), Game.FARBE_INFO)
+		eimer.leeren()
+	if _rohrpost_laeuft:
 		return
 	if not glas.voll() or glas.gehalten or glas.freeze or _unterwegs.get(glas, 0) > 0:
 		return
@@ -877,79 +996,45 @@ func _rohrpost() -> void:
 		_rohrpost_laeuft = false)
 
 
+## Der Walzenknacker knackt Nüsse aus dem Lager von selbst und verkauft die Kerne.
 func _walze(delta: float) -> void:
 	if not Game.hat_maschine("walze"):
 		return
 	var status := ""
 	var laeuft := false
-	var am_platz := not kiste.gehalten and kiste.global_position.distance_to(kiste.heim.origin) < 0.6
-	if Game.energie < 2.0:
-		status = "Keine Energie – Schalen in den Ofen!"
-	elif kiste.voll():
-		status = "Kiste voll – zur Klappe bringen"
-	elif not am_platz:
-		status = "Kiste fehlt"
-	elif Game.berg_rest() <= 0:
-		status = "Berg leer"
+	if Game.lager_menge() <= 0:
+		status = "Lager leer – Nüsse sammeln!"
 	else:
 		laeuft = true
-		var stufe: int = max(0, Game.maschinen_stufe("walze"))
-		_walze_acc += delta * 0.6 * (1.0 + 0.15 * stufe) * Game.maschinen_tempo()
-		while _walze_acc >= 1.0 and laeuft:
-			_walze_acc -= 1.0
-			if Game.nuesse_vom_berg(1) == 0:
-				break
-			Game.energie -= 2.0
-			var nuss := Data.zufalls_nuss(Game.genommen, Game.rng)
-			var info: Dictionary = Data.NUESSE[nuss]
-			var schalen_energie := 3.0 * Game.energie_pro_schale() * 0.15
-			if float(info.haerte) > Data.WALZE_KRAFT:
-				Game.melde_knack(nuss, "matsch", false)
-			else:
-				var p := Game.walzen_praezision()
+		_walze_acc += delta * Game.walzen_tempo()
+		var n := int(_walze_acc)
+		if n > 0:
+			_walze_acc -= n
+			var summe := 0.0
+			for nuss in Game.lager_nehmen(n):
+				var info: Dictionary = Data.NUESSE[nuss]
+				if float(info.haerte) > Data.WALZE_KRAFT + max(0, Game.maschinen_stufe("walze")):
+					Game.melde_knack(nuss, "matsch", false)
+					continue
 				var r := Game.rng.randf()
+				var p := Game.walzen_praezision()
 				if r < p:
-					var einzel: float = float(info.wert) * (1.0 + Game.combo_bonus())
-					kiste.fuelle("haelfte", 2, einzel, nuss)
+					summe += float(info.wert) * 2.0 * Game.preis_faktor()
 					Game.melde_knack(nuss, "perfekt", false, 2)
 				elif r < p + (1.0 - p) * 0.7:
-					kiste.fuelle("bruch", 3, float(info.wert) * 0.2, nuss)
+					summe += float(info.wert) * 0.6 * Game.preis_faktor()
 					Game.melde_knack(nuss, "bruch", false)
 				else:
 					Game.melde_knack(nuss, "matsch", false)
-			if Game.hat_maschine("sieb") and Game.hat_maschine("ofen"):
-				Game.energie += schalen_energie
-			elif not Game.hat_maschine("sieb"):
-				kiste.schmutz_dazu(1)
-			if Game.energie < 2.0 or kiste.voll():
-				laeuft = false
-		status = "Läuft · Präzision %d %%" % int(Game.walzen_praezision() * 100)
+			if summe > 0.0:
+				Game.verdiene(summe)
+		status = "Läuft · %.1f Nüsse/s · Präzision %d %%" % [Game.walzen_tempo(), int(Game.walzen_praezision() * 100)]
 	if laeuft:
 		for r in _walzen_rollen:
 			r.rotate_y(delta * 12.0)
 	if _walzen_status:
-		_walzen_status.text = "WALZENKNACKER\n%s\nEnergie: %d" % [status, int(Game.energie)]
+		_walzen_status.text = "WALZENKNACKER\n%s\nLager: %s" % [status, Data.zahl(Game.lager_menge())]
 
-
-func _band(delta: float) -> void:
-	for bk in _band_kisten.duplicate():
-		bk.position.x += delta * 1.2
-		if bk.position.x > 9.8:
-			_band_kisten.erase(bk)
-			bk.queue_free()
-	if not Game.hat_maschine("band"):
-		return
-	_band_timer -= delta
-	if _band_timer > 0.0:
-		return
-	_band_timer = 6.0
-	var am_platz := not kiste.gehalten and kiste.global_position.distance_to(kiste.heim.origin) < 0.6
-	if am_platz and kiste.haelften + kiste.bruch >= 10:
-		var vis := Bau.mesh_instanz(Bau.box_mesh(Vector3(0.3, 0.2, 0.25)), Look.holz(Look.KIEFER), Vector3(7.7, 1.0, -1.8))
-		add_child(vis)
-		_band_kisten.append(vis)
-		_verkaufe(kiste, false)
-		Sfx.spiele("maschine", -6.0)
 
 
 # =============================================================================
@@ -963,8 +1048,10 @@ func hebel_ziehen(leise := false) -> bool:
 	if _hebel_sperre > 0.0:
 		return false
 	_hebel_sperre = 0.8
-	if Game.berg_rest() <= 0:
-		Game.toast.emit("Der Berg ist leer!", Game.FARBE_INFO)
+	if Game.lager_menge() <= 0:
+		if not leise:
+			Game.toast.emit("Das Lager ist leer! Sammel Nüsse am Berg und bring sie zum Trichter.", Game.FARBE_WARN)
+			Sfx.spiele("fehler")
 		return false
 	var frei := 24 - _nuesse_in_schale()
 	if frei <= 0:
@@ -978,7 +1065,6 @@ func hebel_ziehen(leise := false) -> bool:
 		tw.tween_property(_hebel_arm, "rotation_degrees:x", -40.0, 0.12).set_trans(Tween.TRANS_BACK)
 		tw.tween_property(_hebel_arm, "rotation_degrees:x", 35.0, 0.5).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	_nuesse_holen(min(8, frei), not leise)
-	Game.ziel_melden("hebel")
 	return true
 
 
@@ -990,34 +1076,35 @@ func _nuesse_in_schale() -> int:
 	return n
 
 
-func _neue_nuss_daten() -> Dictionary:
-	var d := {"art": "nuss", "nuss": Data.zufalls_nuss(Game.genommen, Game.rng)}
+func _neue_nuss_daten(nuss: String) -> Dictionary:
+	var d := {"art": "nuss", "nuss": nuss}
 	var r := Game.rng.randf()
-	if r < Game.gold_chance():
+	var g := Game.gold_chance()
+	var f := Game.faul_chance()
+	if r < g:
 		d.gold = true
-	elif r < Game.gold_chance() + Data.CHANCE_FAUL:
+	elif r < g + f:
 		d.faul = true
-	elif r < Game.gold_chance() + Data.CHANCE_FAUL + Data.CHANCE_WURM:
+	elif r < g + f + Data.CHANCE_WURM:
 		d.wurm = true
-	elif r < Game.gold_chance() + Data.CHANCE_FAUL + Data.CHANCE_WURM + Data.CHANCE_DOPPEL:
+	elif r < g + f + Data.CHANCE_WURM + Game.doppel_chance():
 		d.doppel = true
 	return d
 
 
 func _nuesse_holen(anzahl: int, mit_ton: bool) -> void:
-	var n := Game.nuesse_vom_berg(anzahl)
+	var sorten := Game.lager_nehmen(anzahl)
 	var richtung := (ROHR_UNTEN - ROHR_OBEN).normalized()
-	for i in n:
-		var daten := _neue_nuss_daten()
+	for i in sorten.size():
+		var daten := _neue_nuss_daten(sorten[i])
 		get_tree().create_timer(0.09 * i).timeout.connect(func():
 			var pos := ROHR_UNTEN + richtung * 0.05 + Vector3(randf_range(-0.01, 0.01), 0, 0)
 			item_spawnen(daten, pos, richtung * 1.1 + Vector3(randf_range(-0.12, 0.12), 0, randf_range(0.05, 0.2)))
 			Sfx.spiele("rollen", -12.0, randf_range(0.9, 1.2)))
-	if mit_ton and n > 0:
+	if mit_ton and sorten.size() > 0:
 		Sfx.spiele("rutsch", -6.0)
 
 
-## Legt die nächste Nuss aus der Schale in den Knacker (mit kleiner Flugbahn).
 func nuss_nachlegen(st: Knackstation) -> bool:
 	if _nachlegen_laeuft or not st.kann_laden():
 		return false
@@ -1286,33 +1373,9 @@ func _zurueck(b: Behaelter) -> void:
 	b.heimkehren()
 
 
-func _ofen_betreten(body: Node) -> void:
-	if not (body is Behaelter):
-		return
-	var b: Behaelter = body
-	if b.typ != "eimer":
-		Game.toast.emit("In den Ofen gehören nur Schalen", Game.FARBE_WARN)
-		_zurueck(b)
-		return
-	var e := b.schalen * Game.energie_pro_schale()
-	Game.energie += e
-	Sfx.spiele("maschine")
-	Game.toast.emit("+%d Energie" % int(e), Game.FARBE_GUT)
-	b.leeren()
-	_zurueck(b)
-
 
 func _kompost(body: Node) -> void:
-	if body is Behaelter:
-		if body.typ == "eimer" and body.schalen > 0:
-			Game.toast.emit("Schalen auf den Kompost gekippt", Game.FARBE_INFO)
-			body.leeren()
-		_zurueck(body)
-		return
 	if body is Item and not body.gehalten and not body.fliegt:
-		if body.faul or body.art == "wurm":
-			var lohn := 2.0 if body.art == "wurm" else 1.0
-			Game.verdiene(lohn, false)
 		body.queue_free()
 
 
@@ -1359,7 +1422,7 @@ func _eichhoernchen_steuern(delta: float) -> void:
 		_ruhe -= delta
 		hud.zeige_warnung("")
 		return
-	var vorrat := glas.haelften + (kiste.haelften if Game.aera >= 2 else 0)
+	var vorrat := glas.haelften
 	if vorrat > 3:
 		_gier += delta * float(vorrat) / 1500.0
 	if _gier >= 1.0:
@@ -1391,22 +1454,12 @@ func _raubzug(anzahl: int) -> void:
 
 func _eichhoernchen_schicken(anzahl: int) -> void:
 	for i in anzahl:
-		var ziel: Behaelter = null
-		var weg: Array = []
-		var glas_ok := not glas.gehalten and glas.haelften > 0
-		var kiste_ok := Game.aera >= 2 and not kiste.gehalten and kiste.haelften > 0
-		if glas_ok and (not kiste_ok or glas.haelften >= kiste.haelften or randf() < 0.5):
-			ziel = glas
-			var x := randf_range(0.35, 1.15)
-			weg = [Vector3(x, 0.0, -5.5), Vector3(x, FENSTER_Y.x + 0.02, -3.25), Vector3(x, FENSTER_Y.x + 0.02, -2.92), Vector3(x, TISCH_Y, -2.72), glas.global_position]
-		elif kiste_ok:
-			ziel = kiste
-			weg = [Vector3(9.6, 0.0, 4.5), Vector3(9.6, 0.0, 2.7), Vector3(8.5, 0.0, 0.5), kiste.global_position]
-		if ziel == null:
+		if glas.gehalten or glas.haelften <= 0:
 			return
+		var x := randf_range(0.35, 1.15)
 		var e := Eichhoernchen.new()
-		e.weg = weg
-		e.ziel_behaelter = ziel
+		e.weg = [Vector3(x, 0.0, -5.5), Vector3(x, FENSTER_Y.x + 0.02, -3.25), Vector3(x, FENSTER_Y.x + 0.02, -2.92), Vector3(x, TISCH_Y, -2.72), glas.global_position]
+		e.ziel_behaelter = glas
 		e.add_to_group("eichhoernchen")
 		add_child(e)
 
@@ -1429,3 +1482,166 @@ func _aera_erreicht(aera: int, schicht: String) -> void:
 		_:
 			Game.toast.emit("Neue Bergschicht: %s!" % schicht, Game.FARBE_GOLD)
 	hud.zeige_banner("Ära %d" % aera, schicht)
+
+
+# =============================================================================
+# Abliefern, Helfer, Außenposten
+# =============================================================================
+func _silo_aktualisieren() -> void:
+	if _silo_fuell:
+		var anteil := clampf(float(Game.lager_menge()) / float(max(1, Game.lager_kapazitaet())), 0.0, 1.0)
+		_silo_fuell.scale = Vector3(1, max(0.01, anteil), 1)
+	if _silo_text:
+		_silo_text.text = "Lager %s / %s" % [Data.zahl(Game.lager_menge()), Data.zahl(Game.lager_kapazitaet())]
+
+
+func _abgaben_pruefen() -> void:
+	if _abliefern_laeuft or Game.beutel_menge() <= 0 or spieler == null:
+		return
+	var p := spieler.global_position
+	for a in _abgaben:
+		var ap: Vector3 = a.pos
+		if Vector2(p.x - ap.x, p.z - ap.z).length() < ABGABE_RADIUS + 0.25 and absf(p.y - ap.y) < 2.0:
+			_abliefern(a)
+			return
+
+
+## Der Beutel wird in den Trichter gekippt: Nüsse fliegen sichtbar hinein, dann gibt es Geld.
+func _abliefern(a: Dictionary) -> void:
+	_abliefern_laeuft = true
+	var menge := Game.beutel_menge()
+	var arten: Array = Game.beutel.keys()
+	var sichtbar: int = min(menge, 28)
+	var ziel_pos: Vector3 = a.ziel
+	for i in sichtbar:
+		get_tree().create_timer(0.025 * i).timeout.connect(func():
+			flug.starte(spieler.geraet.beutel_mund(), arten[i % arten.size()], func(): return ziel_pos, 0.45, 0.9))
+	Sfx.spiele("rutsch", -2.0)
+	get_tree().create_timer(0.55).timeout.connect(func():
+		Game.abliefern(ziel_pos)
+		if a.has("id"):
+			_band_aktiv[a.id] = 6.0
+		Sfx.spiele("kasse", -6.0)
+		_abliefern_laeuft = false)
+
+
+func naechste_abgabe(von: Vector3) -> Vector3:
+	var best: Vector3 = _abgaben[0].pos
+	for a in _abgaben:
+		if von.distance_to(a.pos) < von.distance_to(best):
+			best = a.pos
+	return best
+
+
+func helfer_abliefern(sorten: Dictionary, pos: Vector3) -> void:
+	Game.einlagern(sorten, pos)
+	for a in _abgaben:
+		if a.has("id") and pos.distance_to(a.pos) < 3.0:
+			_band_aktiv[a.id] = 6.0
+
+
+func _helfer_aufstellen() -> void:
+	var sichtbar: int = min(Game.helfer, Data.HELFER_MAX_SICHTBAR)
+	while _helfer_knoten.size() < sichtbar:
+		var h := SammelHelfer.new()
+		h.welt = self
+		add_child(h)
+		var start: Vector3 = _abgaben[_helfer_knoten.size() % _abgaben.size()].pos
+		h.global_position = start + Vector3(randf_range(-1, 1), 0, randf_range(-1, 1))
+		_helfer_knoten.append(h)
+	for i in _helfer_knoten.size():
+		_helfer_knoten[i].vielfach = Game.helfer / max(1, sichtbar) + (1 if i < Game.helfer % max(1, sichtbar) else 0)
+
+
+func _posten_bauen(id: String) -> void:
+	var d: Dictionary = Data.posten(id)
+	if d.is_empty():
+		return
+	var n := Node3D.new()
+	n.name = id
+	add_child(n)
+	var pos: Vector3 = d.pos
+	var holz := Look.holz(Look.ALTHOLZ, 9.0, 0.1)
+	var dunkel := Look.holz(Look.NUSSBAUM, 6.0, 0.2)
+	# Kleines Silo mit Trichter
+	Bau.block(n, Vector3(1.2, 1.3, 1.2), pos + Vector3(0, 0.65, 1.6), holz)
+	var trichter := CylinderMesh.new()
+	trichter.top_radius = 0.8
+	trichter.bottom_radius = 0.3
+	trichter.height = 0.5
+	trichter.cap_top = false
+	trichter.radial_segments = 4
+	var tm := Look.metall(Color(0.62, 0.65, 0.68), 0.45).duplicate() as StandardMaterial3D
+	tm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	Bau.teil(n, trichter, tm, pos + Vector3(0, 1.55, 1.6), Vector3(0, 45, 0))
+	# Fahne
+	Bau.teil(n, Bau.zylinder_mesh(0.03, 0.03, 3.2, 8), dunkel, pos + Vector3(0.7, 1.6, 2.1))
+	Bau.teil(n, Bau.box_mesh(Vector3(0.7, 0.45, 0.02)), Look.stoff(Color(0.9, 0.7, 0.2)), pos + Vector3(1.05, 2.9, 2.1))
+	Bau.holzschild(n, d.name.to_upper(), pos + Vector3(0, 1.0, 0.98), Vector2(1.1, 0.2), Vector3.ZERO, 60)
+	# Abgabekreis
+	var ring := TorusMesh.new()
+	ring.inner_radius = ABGABE_RADIUS - 0.08
+	ring.outer_radius = ABGABE_RADIUS
+	ring.rings = 48
+	Bau.teil(n, ring, Look.leuchten(Color(1.0, 0.8, 0.25), 1.5), pos + Vector3(0, 0.02, 0), Vector3.ZERO, Vector3(1, 0.15, 1)).set_meta("ohne_rand", true)
+	_abgaben.append({"pos": pos, "name": d.name, "ziel": pos + Vector3(0, 1.7, 1.6), "id": id})
+	# Hochförderband zur Hütte
+	var punkte: Array = [pos + Vector3(0, 0, 1.6)]
+	punkte.append_array(d.weg)
+	punkte.append(SILO_POS + Vector3(0, 0, -0.2))
+	var band_mat := Look.plastik(Color(0.15, 0.15, 0.16), 0.7)
+	var y := 2.6
+	for i in punkte.size() - 1:
+		var a: Vector3 = punkte[i] + Vector3(0, y, 0)
+		var b: Vector3 = punkte[i + 1] + Vector3(0, y, 0)
+		var mitte := (a + b) * 0.5
+		var laenge := a.distance_to(b)
+		var seg := Bau.teil(n, Bau.box_mesh(Vector3(0.5, 0.08, laenge)), band_mat, mitte)
+		seg.look_at_from_position(mitte, b, Vector3.UP)
+		var rahmen := Bau.teil(n, Bau.box_mesh(Vector3(0.6, 0.12, laenge)), Look.metall(Color(0.85, 0.62, 0.18), 0.4), mitte - Vector3(0, 0.08, 0))
+		rahmen.look_at_from_position(mitte - Vector3(0, 0.08, 0), b - Vector3(0, 0.08, 0), Vector3.UP)
+		var stuetzen := int(laenge / 3.5) + 1
+		for j in stuetzen + 1:
+			var sp := a.lerp(b, float(j) / float(stuetzen))
+			Bau.teil(n, Bau.zylinder_mesh(0.05, 0.06, y, 8), Look.metall(Color(0.4, 0.4, 0.42), 0.5), Vector3(sp.x, y * 0.5, sp.z))
+	var mmi := MultiMeshInstance3D.new()
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = Nussmodelle.ganz("wal", 0, 0)
+	mmi.multimesh = mm
+	mmi.material_override = Look.nuss("wal")
+	n.add_child(mmi)
+	var linie := PackedVector3Array()
+	for pkt in punkte:
+		linie.append(pkt + Vector3(0, y + 0.1, 0))
+	_band_nuesse[id] = [mmi, linie, 0.0]
+	if Game.helfer > 0:
+		_helfer_aufstellen()
+
+
+func _baender_bewegen(delta: float) -> void:
+	for id in _band_nuesse:
+		var eintrag: Array = _band_nuesse[id]
+		var mm: MultiMesh = eintrag[0].multimesh
+		var aktiv: float = _band_aktiv.get(id, 0.0)
+		if aktiv <= 0.0:
+			mm.instance_count = 0
+			continue
+		_band_aktiv[id] = aktiv - delta
+		eintrag[2] = fmod(float(eintrag[2]) + delta * 2.2, 0.8)
+		var linie: PackedVector3Array = eintrag[1]
+		var gesamt := 0.0
+		for i in linie.size() - 1:
+			gesamt += linie[i].distance_to(linie[i + 1])
+		var anzahl := int(gesamt / 0.8)
+		mm.instance_count = anzahl
+		for k in anzahl:
+			var s: float = k * 0.8 + float(eintrag[2])
+			var i := 0
+			while i < linie.size() - 2 and s > linie[i].distance_to(linie[i + 1]):
+				s -= linie[i].distance_to(linie[i + 1])
+				i += 1
+			var a := linie[i]
+			var b := linie[i + 1]
+			var p := a.lerp(b, clampf(s / max(0.01, a.distance_to(b)), 0.0, 1.0))
+			mm.set_instance_transform(k, Transform3D(Basis.from_euler(Vector3(k, k * 2.0, 0)).scaled(Vector3.ONE * 2.0), p))
