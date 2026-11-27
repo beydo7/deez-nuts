@@ -1,9 +1,12 @@
 class_name Interaktiv
 extends StaticBody3D
-## Etwas, das man mit [E] benutzt: Hebel, Telefon, Talentbaum, Eichhörnchen-Glocke ...
+## Etwas, das man mit [E] benutzt: Hebel, Telefon, Talentbaum, Verkaufsklappe …
 
 var text := "Benutzen"
 var aktion: Callable
+var mit_gegenstand := false          # auch benutzbar, wenn man etwas in der Hand hat
+var text_mit_gegenstand := ""
+var info: Callable                   # liefert eine zweite Hinweiszeile
 
 
 static func erzeuge(eltern: Node3D, groesse: Vector3, pos: Vector3, hinweis: String, rueckruf: Callable, sichtbar := false, farbe := Color.WHITE) -> Interaktiv:

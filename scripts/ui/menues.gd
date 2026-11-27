@@ -158,7 +158,7 @@ func _reiter_maschinen() -> Control:
 		var knoepfe: Array = []
 		var text: String = m.text
 		if m.aera > Game.aera:
-			text += "\nGibt es ab Ära %d (Schicht „Hang“, 1.000 Nüsse)" % m.aera
+			text += "\nGibt es ab Ära %d (Schicht „Hang“, %s Nüsse)" % [m.aera, Data.zahl(Data.SCHICHTEN[1].ab)]
 			var g := Stil.knopf("Gesperrt", func(): pass)
 			g.disabled = true
 			knoepfe.append(g)
@@ -291,14 +291,17 @@ func _talent_karte(id: String) -> Control:
 # --- Pause -----------------------------------------------------------------------
 func zeige_pause() -> void:
 	_oeffnen("pause", true)
-	var v := Stil.fenster(_wurzel, "Pause", 620, 640, schliessen)
+	var v := Stil.fenster(_wurzel, "Pause", 620, 700, schliessen)
 	v.add_child(Stil.knopf("Weiterspielen", schliessen, 22))
 	v.add_child(Stil.label("Einstellungen", 22, Stil.GOLD))
 	v.add_child(_regler("Maus-Empfindlichkeit", 0.05, 0.8, float(Game.einstellungen.empfindlichkeit), func(x): Game.einstellungen.empfindlichkeit = x))
 	v.add_child(_regler("Lautstärke", 0.0, 1.0, float(Game.einstellungen.lautstaerke), func(x):
 		Game.einstellungen.lautstaerke = x
 		AudioServer.set_bus_volume_db(0, linear_to_db(max(0.001, x)))))
-	v.add_child(_schalter("Hilfsring am Fadenkreuz zeigen  [H]", "hilfsring"))
+	v.add_child(_regler("Musik", 0.0, 1.0, float(Game.einstellungen.musik), func(x):
+		Game.einstellungen.musik = x
+		Sfx.musik_lautstaerke(x)))
+	v.add_child(_schalter("Hilfsring um die Nuss zeigen  [H]", "hilfsring"))
 	v.add_child(_schalter("Tippen statt Halten (Klick = zudrücken, Klick = loslassen)", "tippen"))
 	v.add_child(Stil.knopf("Steuerung anzeigen", zeige_intro, 20))
 	v.add_child(Stil.knopf("Speichern", func():
@@ -355,19 +358,17 @@ func zeige_intro() -> void:
 	var v := Stil.fenster(_wurzel, "Deez Nuts!", 860, 700, Callable())
 	v.add_child(Stil.label("Opa Walter hat dir seine alte Nussknackerei vererbt – und kurz vor seinem Tod einen Vertrag mit der Lebkuchenfabrik unterschrieben. Heute früh hat ein Laster eine Million Nüsse in den Hof gekippt. Trag den Berg ab, Nuss für Nuss. Die Eichhörnchen aus dem Wald haben ihn auch schon entdeckt …", 19, Stil.TEXT, true))
 	v.add_child(Stil.label("So geht's", 24, Stil.GOLD))
-	var steuerung := """[WASD] laufen · [Shift] rennen · [Leertaste] springen · Maus schauen
-[E] greifen, ablegen, einlegen, benutzen · [Q] fallen lassen
-[Linksklick halten] Nussknacker zudrücken – loslassen zum Knacken
-[Linksklick] mit etwas in der Hand: werfen
-[F] Schalen vom Tisch in den Eimer wischen · [Tab] Talentbaum · [Esc] Menü
+	var steuerung := """[WASD] laufen · [Shift] rennen · Maus schauen · [E] benutzen, nehmen, ablegen
+[Rechtsklick] werfen · [Q] fallen lassen · [R] Hebel ziehen · [Tab] Talentbaum · [Esc] Menü
 
-1. Am Hebel links neben dem Fenster Nüsse aus dem Berg holen.
-2. Nuss greifen und mit [E] in den Knacker legen.
-3. Zudrücken und im richtigen Moment loslassen: Hör aufs Knarzen, achte auf die Risse.
-   Erster Riss = noch zu früh. Zweiter Riss und Zittern = jetzt loslassen!
-4. Ganze Kernhälften ins Glas, Schalen in den Eimer, Bruch in die Bruchschale.
-5. Volles Glas zur Verkaufsklappe an der linken Wand tragen und hineinwerfen.
-6. Am Telefon Werkzeuge und Maschinen bestellen."""
+An der Knackbank ([E] auf den Nussknacker):
+   [Linksklick halten] zudrücken – loslassen, wenn die Nuss zittert und knistert
+   [Rechtsklick] Schalen wegwischen · [R] neue Nüsse vom Berg · [E] aufstehen
+   Erster Riss = noch zu früh. Zittern und Knistern = jetzt loslassen!
+
+Perfekte Kerne fliegen von selbst ins Glas. Ist es voll, nimm es [E]
+und bring es zur Verkaufsklappe an der linken Wand. Dort [E] = verkaufen.
+Am roten Telefon bestellst du bessere Werkzeuge und Maschinen."""
 	v.add_child(Stil.label(steuerung, 17, Stil.TEXT, true))
 	v.add_child(Stil.label("Testhilfen: [F9] +5.000 Münzen · [F10] +1.000 Nüsse geknackt · [F11] +5 Meisterpunkte", 15, Stil.LEISE, true))
 	v.add_child(Stil.knopf("Los geht's!", func():

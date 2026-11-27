@@ -12,6 +12,8 @@ signal talent_gelernt(id: String)
 signal bestellungen_geaendert
 signal knack_ergebnis(ergebnis: String, text: String)
 signal berg_leer
+signal ziel_geaendert
+signal verkauft(betrag: float, pos: Vector3)
 
 var SPEICHER_PFAD := "user://spielstand.json"
 var selbsttest := false
@@ -45,15 +47,19 @@ var statistik := {"perfekt": 0, "bruch": 0, "matsch": 0, "verkauft": 0.0, "gesto
 var erster_start := true
 var berg_fertig := false
 var spielzeit: float = 0.0
+var ziel_index: int = 0
+var ziel_zaehler: int = 0
 
 var einstellungen := {
 	"empfindlichkeit": 0.25,
 	"hilfsring": true,
 	"tippen": false,
 	"lautstaerke": 0.8,
+	"musik": 0.6,
 }
 
 var _speicher_timer := 0.0
+var _hitstop_ende := 0
 var _zins_timer := 0.0
 var _laden_erfolgt := false
 
@@ -74,6 +80,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _hitstop_ende > 0 and Time.get_ticks_msec() >= _hitstop_ende:
+		_hitstop_ende = 0
+		Engine.time_scale = 1.0
 	spielzeit += delta
 	_bestellungen_ticken(delta)
 	_speicher_timer += delta
@@ -100,7 +109,7 @@ func _eingaben_anlegen() -> void:
 	var tasten := {
 		"vor": [KEY_W, KEY_UP], "zurueck": [KEY_S, KEY_DOWN], "links": [KEY_A, KEY_LEFT], "rechts": [KEY_D, KEY_RIGHT],
 		"springen": [KEY_SPACE], "rennen": [KEY_SHIFT], "benutzen": [KEY_E], "fallenlassen": [KEY_Q],
-		"wischen": [KEY_F], "talente": [KEY_TAB], "hilfsring": [KEY_H], "pause": [KEY_ESCAPE],
+		"wischen": [KEY_F], "hebel": [KEY_R], "talente": [KEY_TAB], "hilfsring": [KEY_H], "pause": [KEY_ESCAPE],
 		"cheat_geld": [KEY_F9], "cheat_nuesse": [KEY_F10], "cheat_mp": [KEY_F11],
 	}
 	for aktion in tasten:
@@ -110,7 +119,7 @@ func _eingaben_anlegen() -> void:
 			var ev := InputEventKey.new()
 			ev.physical_keycode = k
 			InputMap.action_add_event(aktion, ev)
-	var maus := {"druecken": MOUSE_BUTTON_LEFT, "werfen_alt": MOUSE_BUTTON_RIGHT}
+	var maus := {"druecken": MOUSE_BUTTON_LEFT, "rechts_klick": MOUSE_BUTTON_RIGHT}
 	for aktion in maus:
 		if not InputMap.has_action(aktion):
 			InputMap.add_action(aktion)
@@ -226,6 +235,7 @@ func kaufe_werkzeug(id: String) -> bool:
 		return false
 	werkzeuge[id] = 0
 	werkzeug_aktiv = id
+	ziel_melden("kaufen")
 	Sfx.spiele("kasse")
 	toast.emit("%s gekauft" % w.name, FARBE_GUT)
 	werkzeug_geaendert.emit()
@@ -358,6 +368,7 @@ func melde_knack(nuss: String, ergebnis: String, hand: bool, haelften := 0) -> v
 			statistik.perfekt += 1
 			if hand:
 				combo = min(combo + 1, combo_max())
+				ziel_melden("knacken")
 			_bestellung_fortschritt(nuss, haelften * (3 if hand and hat_talent("meisterknack") else 1))
 		"bruch":
 			statistik.bruch += 1
@@ -476,6 +487,7 @@ func speichern() -> void:
 		"maschinen": maschinen, "talente": talente, "bestellungen": bestellungen,
 		"behaelter": behaelter, "statistik": statistik, "einstellungen": einstellungen,
 		"erster_start": erster_start, "berg_fertig": berg_fertig, "spielzeit": spielzeit,
+		"ziel_index": ziel_index, "ziel_zaehler": ziel_zaehler,
 	}
 	var f := FileAccess.open(SPEICHER_PFAD, FileAccess.WRITE)
 	if f:
@@ -511,6 +523,8 @@ func laden() -> void:
 	erster_start = bool(d.get("erster_start", false))
 	berg_fertig = bool(d.get("berg_fertig", false))
 	spielzeit = float(d.get("spielzeit", 0))
+	ziel_index = int(d.get("ziel_index", Data.ZIELE.size() if geknackt > 50 else 0))
+	ziel_zaehler = int(d.get("ziel_zaehler", 0))
 	_laden_erfolgt = true
 
 
@@ -545,5 +559,56 @@ func zuruecksetzen() -> void:
 	erster_start = true
 	berg_fertig = false
 	spielzeit = 0.0
+	ziel_index = 0
+	ziel_zaehler = 0
 	_bestellungen_auffuellen()
 	get_tree().reload_current_scene()
+
+
+# --- Ziele -------------------------------------------------------------------
+## Das aktuelle geführte Ziel oder {} wenn alle geschafft sind.
+func ziel_aktuell() -> Dictionary:
+	if ziel_index < Data.ZIELE.size():
+		return Data.ZIELE[ziel_index]
+	return {}
+
+
+func ziel_melden(id: String, menge := 1) -> void:
+	var z := ziel_aktuell()
+	if z.is_empty() or z.id != id:
+		return
+	ziel_zaehler += menge
+	if ziel_zaehler < int(z.get("anzahl", 1)):
+		ziel_geaendert.emit()
+		return
+	ziel_zaehler = 0
+	ziel_index += 1
+	if int(z.lohn) > 0:
+		verdiene(float(z.lohn), false)
+	Sfx.spiele("ziel")
+	toast.emit("Geschafft: %s%s" % [z.text, ("  +%d Münzen" % int(z.lohn)) if int(z.lohn) > 0 else ""], FARBE_GUT)
+	ziel_geaendert.emit()
+
+
+## Das günstigste Werkzeug oder die günstigste Maschine, die man noch nicht hat.
+func naechstes_kaufziel() -> Dictionary:
+	var best := {}
+	for w in Data.WERKZEUGE:
+		if werkzeuge.has(w.id) or int(w.aera) > aera:
+			continue
+		if best.is_empty() or float(w.preis) < float(best.preis):
+			best = {"name": w.name, "preis": float(w.preis), "art": "Werkzeug"}
+	for id in Data.MASCHINEN:
+		if hat_maschine(id) or not maschine_verfuegbar(id):
+			continue
+		var p := maschinen_preis(id)
+		if best.is_empty() or p < float(best.preis):
+			best = {"name": Data.MASCHINEN[id].name, "preis": p, "art": "Maschine"}
+	return best
+
+
+# --- Spielgefühl --------------------------------------------------------------
+## Friert das Spiel kurz fast ein (Treffer-Gefühl beim Knacken).
+func hitstop(dauer: float, skala := 0.05) -> void:
+	Engine.time_scale = skala
+	_hitstop_ende = Time.get_ticks_msec() + int(dauer * 1000.0)

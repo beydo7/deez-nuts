@@ -16,18 +16,24 @@ const L_TIER := 32
 # haerte = Mindestkraft, sweet = Breite des Sweet Spots (Anteil der Druckskala),
 # wert = Münzen je ganzer Kernhälfte, groesse = Radius in Metern (spielfreundlich vergrößert)
 const NUESSE := {
-	"hasel": {"name": "Haselnuss", "haerte": 1.0, "sweet": 0.30, "wert": 1.0, "groesse": 0.034,
-		"form": Vector3(1.0, 1.0, 1.0), "farbe": Color(0.66, 0.42, 0.2), "kern": Color(0.93, 0.82, 0.62)},
-	"wal": {"name": "Walnuss", "haerte": 3.0, "sweet": 0.22, "wert": 4.0, "groesse": 0.046,
-		"form": Vector3(1.0, 1.08, 1.0), "farbe": Color(0.6, 0.43, 0.25), "kern": Color(0.82, 0.66, 0.42)},
-	"mandel": {"name": "Mandel", "haerte": 2.0, "sweet": 0.18, "wert": 6.0, "groesse": 0.04,
-		"form": Vector3(0.72, 0.55, 1.35), "farbe": Color(0.78, 0.58, 0.36), "kern": Color(0.95, 0.88, 0.75)},
-	"pekan": {"name": "Pekannuss", "haerte": 4.0, "sweet": 0.12, "wert": 10.0, "groesse": 0.04,
-		"form": Vector3(0.78, 0.78, 1.5), "farbe": Color(0.5, 0.27, 0.13), "kern": Color(0.7, 0.45, 0.25)},
-	"para": {"name": "Paranuss", "haerte": 7.0, "sweet": 0.15, "wert": 18.0, "groesse": 0.046,
-		"form": Vector3(0.75, 0.9, 1.4), "farbe": Color(0.36, 0.25, 0.17), "kern": Color(0.96, 0.92, 0.84), "springt": true},
-	"macadamia": {"name": "Macadamia", "haerte": 12.0, "sweet": 0.14, "wert": 35.0, "groesse": 0.04,
-		"form": Vector3(1.0, 1.0, 1.0), "farbe": Color(0.55, 0.4, 0.27), "kern": Color(0.97, 0.94, 0.85)},
+	"hasel": {"name": "Haselnuss", "haerte": 1.0, "sweet": 0.30, "wert": 1.0, "groesse": 0.034, "muster": 0, "falten": 0.0,
+		"form": Vector3(1.0, 1.0, 1.0), "farbe": Color(0.74, 0.47, 0.22), "farbe2": Color(0.48, 0.28, 0.12),
+		"kern": Color(0.9, 0.78, 0.58), "kern2": Color(0.6, 0.4, 0.22)},
+	"wal": {"name": "Walnuss", "haerte": 3.0, "sweet": 0.22, "wert": 4.0, "groesse": 0.046, "muster": 1, "falten": 1.0,
+		"form": Vector3(1.0, 1.08, 1.0), "farbe": Color(0.72, 0.55, 0.35), "farbe2": Color(0.36, 0.24, 0.13),
+		"kern": Color(0.82, 0.64, 0.4), "kern2": Color(0.48, 0.3, 0.14)},
+	"mandel": {"name": "Mandel", "haerte": 2.0, "sweet": 0.18, "wert": 6.0, "groesse": 0.042, "muster": 2, "falten": 0.0,
+		"form": Vector3(0.72, 0.55, 1.35), "farbe": Color(0.82, 0.63, 0.41), "farbe2": Color(0.56, 0.38, 0.22),
+		"kern": Color(0.97, 0.91, 0.8), "kern2": Color(0.62, 0.4, 0.22)},
+	"pekan": {"name": "Pekannuss", "haerte": 4.0, "sweet": 0.12, "wert": 10.0, "groesse": 0.042, "muster": 3, "falten": 1.0,
+		"form": Vector3(0.78, 0.78, 1.5), "farbe": Color(0.58, 0.32, 0.16), "farbe2": Color(0.24, 0.12, 0.06),
+		"kern": Color(0.74, 0.48, 0.26), "kern2": Color(0.4, 0.22, 0.1)},
+	"para": {"name": "Paranuss", "haerte": 7.0, "sweet": 0.15, "wert": 18.0, "groesse": 0.048, "muster": 4, "falten": 0.0,
+		"form": Vector3(0.75, 0.9, 1.4), "farbe": Color(0.42, 0.29, 0.18), "farbe2": Color(0.2, 0.13, 0.08),
+		"kern": Color(0.96, 0.93, 0.86), "kern2": Color(0.55, 0.4, 0.28), "springt": true},
+	"macadamia": {"name": "Macadamia", "haerte": 12.0, "sweet": 0.14, "wert": 35.0, "groesse": 0.04, "muster": 5, "falten": 0.0,
+		"form": Vector3(1.0, 1.0, 1.0), "farbe": Color(0.64, 0.47, 0.3), "farbe2": Color(0.42, 0.3, 0.18),
+		"kern": Color(0.98, 0.95, 0.86), "kern2": Color(0.84, 0.75, 0.58)},
 }
 
 # Sonderfälle (Wahrscheinlichkeit je Nuss vom Berg)
@@ -39,7 +45,7 @@ const CHANCE_WURM := 0.03
 # --- Bergschichten -----------------------------------------------------------
 const SCHICHTEN := [
 	{"ab": 0, "name": "Kuppe", "aera": 1, "mix": {"hasel": 0.45, "wal": 0.55}},
-	{"ab": 1000, "name": "Hang", "aera": 2, "mix": {"hasel": 0.15, "wal": 0.4, "mandel": 0.27, "pekan": 0.18}},
+	{"ab": 600, "name": "Hang", "aera": 2, "mix": {"hasel": 0.15, "wal": 0.4, "mandel": 0.27, "pekan": 0.18}},
 	{"ab": 25000, "name": "Kern des Bergs", "aera": 3, "mix": {"wal": 0.3, "mandel": 0.2, "pekan": 0.2, "para": 0.18, "macadamia": 0.12}},
 	{"ab": 150000, "name": "Fuß des Bergs", "aera": 4, "mix": {"wal": 0.25, "mandel": 0.15, "pekan": 0.2, "para": 0.2, "macadamia": 0.2}},
 	{"ab": 500000, "name": "Grund", "aera": 5, "mix": {"hasel": 0.1, "wal": 0.2, "mandel": 0.15, "pekan": 0.15, "para": 0.2, "macadamia": 0.2}},
@@ -49,28 +55,32 @@ const SCHICHTEN := [
 # kraft, zeit = Sekunden bis Druck 1.0, sweet = Bonus auf Sweet-Spot-Breite
 const WERKZEUGE := [
 	{"id": "haende", "name": "Bloße Hände", "kraft": 2.0, "zeit": 1.2, "sweet": 0.0, "preis": 0, "aera": 1,
-		"text": "Zwei Nüsse gegeneinander drücken. Walnüsse nur über einen Riss."},
+		"text": "Mit beiden Händen zusammenpressen. Walnüsse brauchen erst einen Riss."},
 	{"id": "holz", "name": "Holz-Nussknacker", "kraft": 4.0, "zeit": 1.0, "sweet": 0.0, "preis": 50, "aera": 1,
-		"text": "Der Klassiker. Schafft Walnüsse in einem Zug."},
+		"text": "Opas alte Hebelpresse aus Eiche. Schafft Walnüsse in einem Zug."},
 	{"id": "metall", "name": "Metall-Hebelknacker", "kraft": 6.0, "zeit": 0.8, "sweet": 0.03, "preis": 400, "aera": 1,
-		"text": "Schneller und etwas gnädiger."},
+		"text": "Verchromter Hebel: schneller und etwas gnädiger."},
 	{"id": "hammer", "name": "Hammer", "kraft": 10.0, "zeit": 0.45, "sweet": -0.05, "preis": 2500, "aera": 2,
-		"text": "Sehr schnell, aber ungenau."},
+		"text": "Halten zum Ausholen, loslassen zum Zuschlagen. Schnell, aber ungenau."},
 	{"id": "schraubstock", "name": "Schraubstock", "kraft": 14.0, "zeit": 1.6, "sweet": 0.08, "preis": 12000, "aera": 2,
-		"text": "Langsam, sehr präzise. Schafft Macadamia."},
+		"text": "Kurbel drehen: langsam, sehr präzise. Schafft Macadamia."},
 ]
 const WERKZEUG_MAX_STUFE := 10
 
 # --- Maschinen und Extras ------------------------------------------------------
 const MASCHINEN := {
 	"rutsche": {"name": "Nussrutsche", "preis": 150, "aera": 1, "stufen": 10, "stufenpreis": 120,
-		"text": "Holt Nüsse vom Berg und legt sie in den Knacker."},
+		"text": "Zieht den Hebel für dich und legt die nächste Nuss schneller nach."},
+	"grosses_glas": {"name": "Großes Glas", "preis": 250, "aera": 1, "stufen": 0,
+		"text": "Passt doppelt so viel hinein: 48 statt 24 Kernhälften."},
 	"deckel": {"name": "Glasdeckel", "preis": 300, "aera": 1, "stufen": 0,
 		"text": "Eichhörnchen brauchen dreimal so lange am Glas."},
 	"mimi": {"name": "Katze Mimi", "preis": 800, "aera": 1, "stufen": 0,
 		"text": "Verscheucht Eichhörnchen. Fängt nie eins."},
+	"rohrpost": {"name": "Rohrpost", "preis": 1200, "aera": 1, "stufen": 0,
+		"text": "Ein volles Glas saust von selbst zur Verkaufsklappe. Kein Laufen mehr."},
 	"sieb": {"name": "Tisch-Sieb", "preis": 1500, "aera": 2, "stufen": 0,
-		"text": "Sortiert Kerne, Bruch und Schalen am Tisch von selbst."},
+		"text": "Schalen und Bruch rutschen von selbst in Eimer und Schale. Kein Wischen mehr."},
 	"ofen": {"name": "Schalenofen", "preis": 1200, "aera": 2, "stufen": 0,
 		"text": "Verbrennt Schalen zu Energie für Maschinen."},
 	"walze": {"name": "Walzenknacker", "preis": 3000, "aera": 2, "stufen": 10, "stufenpreis": 900,
@@ -80,6 +90,18 @@ const MASCHINEN := {
 	"laufrad": {"name": "Eichhörnchen-Laufrad", "preis": 4000, "aera": 2, "stufen": 0, "talent": "laufrad",
 		"text": "Gezähmte Eichhörnchen erzeugen Energie."},
 }
+
+# --- Geführte Ziele am Anfang ----------------------------------------------------
+# Danach zeigt das Spiel immer das nächste bezahlbare Ziel aus dem Katalog.
+const ZIELE := [
+	{"id": "hinsetzen", "text": "Setz dich an die Knackbank", "hilfe": "Schau auf den Nussknacker und drück [E]", "lohn": 0},
+	{"id": "hebel", "text": "Hol Nüsse vom Berg", "hilfe": "[R] zieht den Hebel, die Nüsse rollen durchs Rohr", "lohn": 0},
+	{"id": "knacken", "text": "Knack 3 Nüsse perfekt", "hilfe": "[Linksklick] halten und loslassen, wenn die Nuss zittert", "lohn": 5, "anzahl": 3},
+	{"id": "wischen", "text": "Wisch die Schalen weg", "hilfe": "[Rechtsklick] wischt die Schalen in den Eimer", "lohn": 5},
+	{"id": "glas_voll", "text": "Füll das Glas", "hilfe": "Perfekte Kerne fliegen von selbst ins Glas", "lohn": 10},
+	{"id": "verkaufen", "text": "Verkauf das Glas", "hilfe": "Aufstehen [E], Glas nehmen [E], zur Klappe an der linken Wand, dort [E]", "lohn": 10},
+	{"id": "kaufen", "text": "Bestell den Holz-Nussknacker", "hilfe": "Am roten Telefon an der linken Wand", "lohn": 0},
+]
 
 const WALZE_KRAFT := 8.0
 

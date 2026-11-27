@@ -4,8 +4,8 @@
 - Sprache: **Deutsch** – UI-Texte, Bezeichner, Kommentare, Commit-Nachrichten.
 - Spielgefühl wie Potato Please / How They Built the Pyramids, **nicht** wie CRACK: kein Horror, kein Riesenobjekt, alles anfassbar, kein Prestige-Reset.
 - Alle Spielwerte stehen in `scripts/autoload/data.gd`. Neue Inhalte zuerst dort anlegen.
-- Geometrie ist Platzhalter aus Grundformen (`scripts/bau.gd`), bis Blender-Modelle kommen.
+- Geometrie kommt aus Code (`scripts/bau.gd`, `scripts/einrichtung.gd`, `scripts/nussmodelle.gd`), Materialien aus `scripts/look.gd` + `shaders/`, bis Blender-Modelle kommen. Keine Texturdateien.
 - Vor jedem Commit den Selbsttest laufen lassen: `godot --headless --path . -- --selbsttest` (muss mit 0 Fehlern enden).
-- Bildschirmfotos zum Prüfen: `xvfb-run godot --path . --rendering-driver opengl3 -- --selbsttest --bilder=/tmp/bilder`
+- Bildschirmfotos zum Prüfen (echter Forward+-Renderer über lavapipe): `. /opt/lavapipe/use-lavapipe.sh; xvfb-run godot --path . --rendering-driver vulkan -- --selbsttest --bilder=/tmp/bilder`
 - Sounds neu erzeugen: `python tools/generate_sfx.py`
 - Konzept: `docs/konzept.md` und das Game-Design-Dokument (Link in der README).

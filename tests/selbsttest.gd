@@ -94,19 +94,22 @@ func _knacken() -> void:
 func _verkaufen() -> void:
 	print("-- Sortieren und Verkaufen")
 	var glas: Behaelter = welt.glas
-	var anzahl := 0
-	for t in get_tree().get_nodes_in_group("items"):
-		if is_instance_valid(t) and t.art == "haelfte":
-			if glas.nimmt_auf(t.daten()):
-				anzahl += 1
-			t.queue_free()
-	pruefe(anzahl >= 4, "Kernhälften ins Glas (%d)" % anzahl)
+	var anzahl := glas.haelften
+	pruefe(anzahl >= 4, "Perfekte Kerne fliegen von selbst ins Glas (%d)" % anzahl)
+	pruefe(glas.inhalt.size() == glas.belegt(), "Inhalt des Glases ist sichtbar gespeichert")
+	pruefe(welt.bruchschale.bruch >= 3, "Bruch fliegt in die Bruchschale (%d)" % welt.bruchschale.bruch)
 	pruefe(glas.verkaufswert() > 0.0, "Glas hat einen Wert")
 	var vorher := Game.muenzen
-	welt._verkaufe(glas, true)
-	pruefe(Game.muenzen > vorher, "Verkauf bringt Münzen (%.1f)" % (Game.muenzen - vorher))
+	var s: Spieler = welt.spieler
+	s._greifen(glas)
+	await warte(0.3)
+	welt._klappe_benutzen(s)
+	await warte(0.6)
+	pruefe(Game.muenzen > vorher, "Glas an der Klappe verkauft (%.1f Münzen)" % (Game.muenzen - vorher))
 	pruefe(glas.belegt() == 0, "Glas ist danach leer")
-	await warte(0.2)
+	pruefe(s.gehalten == null, "Glas ist aus der Hand")
+	await warte(0.5)
+	pruefe(glas.global_position.distance_to(glas.heim.origin) < 0.1, "Glas steht wieder auf dem Tisch")
 
 
 func _laden_und_maschinen() -> void:
@@ -120,6 +123,14 @@ func _laden_und_maschinen() -> void:
 	pruefe(Game.kaufe_maschine("rutsche"), "Nussrutsche kaufen")
 	pruefe(Game.kaufe_maschine("deckel"), "Glasdeckel kaufen")
 	pruefe(Game.kaufe_maschine("mimi"), "Katze kaufen")
+	pruefe(Game.kaufe_maschine("grosses_glas"), "Großes Glas kaufen")
+	await warte(0.1)
+	pruefe(welt.glas.kapazitaet == 48, "Großes Glas fasst 48")
+	pruefe(Game.kaufe_maschine("rohrpost"), "Rohrpost kaufen")
+	var m_vorher := Game.muenzen
+	welt.glas.fuelle("haelfte", 48, 4.0, "wal")
+	await warte(2.5)
+	pruefe(welt.glas.belegt() == 0 and Game.muenzen > m_vorher, "Rohrpost verkauft das volle Glas")
 	pruefe(not Game.kaufe_maschine("walze"), "Walzenknacker erst ab Ära 2")
 	await warte(3.0)
 	pruefe(welt.station.geladen, "Rutsche legt eine Nuss in den Knacker")
@@ -129,7 +140,7 @@ func _werkstatt() -> void:
 	print("-- Werkstatt")
 	Game.nuesse_vom_berg(1000)
 	await warte(0.2)
-	pruefe(Game.aera == 2, "Ära 2 nach 1.000 Nüssen")
+	pruefe(Game.aera == 2, "Ära 2 nach %d Nüssen" % Data.SCHICHTEN[1].ab)
 	pruefe(welt._werkstatt_tuer == null, "Werkstatttür ist offen")
 	for id in ["ofen", "sieb", "walze", "band"]:
 		pruefe(Game.kaufe_maschine(id), "%s kaufen" % id)
@@ -202,6 +213,7 @@ func _wischen_und_ofen() -> void:
 	var eimer: Behaelter = welt.eimer
 	eimer.leeren()
 	var p: Vector3 = welt.station.global_position + Vector3(0, 0.05, 0.1)
+	Game.maschinen.erase("sieb")
 	for i in 5:
 		welt.item_spawnen({"art": "schale", "nuss": "wal"}, p + Vector3(randf_range(-0.1, 0.1), 0.02, 0), Vector3.ZERO)
 	await warte(0.5)
@@ -256,29 +268,67 @@ func _spieler() -> void:
 	s.global_position = Vector3(0.15, 0.05, -1.45)
 	s.rotation.y = 0.0
 	s._blick_x = -0.62
-	s.kamera.rotation.x = -0.62
-	if not welt.station.geladen:
-		welt.station.lade({"art": "nuss", "nuss": "hasel"})
 	await warte(0.3)
 	pruefe(s.blickt_auf_station() == welt.station, "Fadenkreuz trifft den Knacker vom Platz am Tisch")
-	pruefe(s.hinweis.contains("zudrücken"), "Hinweis zeigt Zudrücken")
-	s._druecken_an()
+	pruefe(s.hinweis.contains("Knackbank"), "Hinweis zeigt Hinsetzen")
+	# Hinsetzen, nachlegen, knacken, wischen, aufstehen
+	if welt.station.geladen:
+		welt.station.entnehme()
+	Game.maschinen.erase("rutsche")
+	welt._hebel_sperre = 0.0
+	welt.hebel_ziehen()
+	await warte(1.0)
+	_taste(KEY_E)
+	await warte(0.1)
+	pruefe(s.sitzt, "[E] am Knacker: hinsetzen")
+	pruefe(Game.ziel_index >= 1, "Ziel „Hinsetzen“ geschafft")
+	await warte(1.0)
+	pruefe(welt.station.geladen, "Im Sitzen wird automatisch nachgelegt")
+	_maus(MOUSE_BUTTON_LEFT, true)
 	await warte(0.2)
 	pruefe(welt.station.drueckt, "Linksklick drückt zu")
-	s._druecken_aus()
+	_maus(MOUSE_BUTTON_LEFT, false)
 	pruefe(not welt.station.drueckt, "Loslassen knackt")
+	await warte(0.3)
+	welt.item_spawnen({"art": "schale", "nuss": "wal"}, welt.station.global_position + Vector3(0.1, 0.05, 0.05), Vector3.ZERO)
+	await warte(0.4)
+	var schalen_vorher: int = welt.eimer.schalen
+	_maus(MOUSE_BUTTON_RIGHT, true)
+	_maus(MOUSE_BUTTON_RIGHT, false)
+	await warte(0.9)
+	pruefe(welt.eimer.schalen > schalen_vorher, "Rechtsklick wischt Schalen in den Eimer")
+	_taste(KEY_E)
+	await warte(0.6)
+	pruefe(not s.sitzt, "[E] steht wieder auf")
 	# Eine Hälfte neben dem Knacker greifen
-	await warte(0.8)
-	var haelfte: Item = welt.item_spawnen({"art": "haelfte", "nuss": "wal", "wert": 4.0}, welt.station.global_position + Vector3(0.12, 0.05, 0.0), Vector3.ZERO)
+	var haelfte: Item = welt.item_spawnen({"art": "haelfte", "nuss": "wal", "wert": 4.0}, welt.station.global_position + Vector3(0.16, 0.05, 0.06), Vector3.ZERO)
 	await warte(0.6)
 	s.look_at(haelfte.global_position, Vector3.UP)
 	s.rotation.x = 0
 	s.rotation.z = 0
-	var richtung := haelfte.global_position - s.kamera.global_position
+	var richtung := haelfte.global_position - s._kopf_transform().origin
 	s._blick_x = atan2(richtung.y, Vector2(richtung.x, richtung.z).length())
-	s.kamera.rotation.x = s._blick_x
 	await warte(0.2)
 	pruefe(s.ziel == haelfte, "Hälfte neben dem Knacker lässt sich anvisieren")
+
+
+func _taste(k: Key) -> void:
+	for gedrueckt in [true, false]:
+		var ev := InputEventKey.new()
+		ev.physical_keycode = k
+		ev.pressed = gedrueckt
+		Input.parse_input_event(ev)
+
+
+func _maus(knopf: MouseButton, gedrueckt: bool) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = knopf
+	ev.pressed = gedrueckt
+	# direkt an die Sitz-Steuerung (im Headless-Modus ist die Maus nie eingefangen)
+	if welt.spieler.sitzt:
+		welt.spieler._eingabe_sitzend(ev)
+	else:
+		welt.spieler._unhandled_input(ev)
 
 
 func _speichern() -> void:

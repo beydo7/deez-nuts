@@ -2,7 +2,7 @@ class_name Stil
 extends RefCounted
 ## Gemeinsamer Look für alle Menüs: warmes Holzbraun, Creme, Nussgold.
 
-const HINTERGRUND := Color(0.16, 0.1, 0.06, 0.92)
+const HINTERGRUND := Color(0.13, 0.085, 0.05, 0.86)
 const RAND := Color(0.85, 0.62, 0.3)
 const TEXT := Color(0.98, 0.93, 0.82)
 const LEISE := Color(0.8, 0.72, 0.6)
@@ -23,6 +23,10 @@ static func box(farbe := HINTERGRUND, rand := RAND, radius := 10, innen := 14) -
 	s.content_margin_right = innen
 	s.content_margin_top = innen * 0.7
 	s.content_margin_bottom = innen * 0.7
+	s.shadow_color = Color(0, 0, 0, 0.25)
+	s.shadow_size = 6
+	s.shadow_offset = Vector2(0, 3)
+	s.anti_aliasing = true
 	return s
 
 
@@ -30,6 +34,7 @@ static func thema() -> Theme:
 	if _thema:
 		return _thema
 	var t := Theme.new()
+	t.default_font = Look.schrift(500)
 	t.default_font_size = 20
 	t.set_color("font_color", "Label", TEXT)
 	t.set_stylebox("panel", "PanelContainer", box())
@@ -60,8 +65,8 @@ static func label(text: String, groesse := 20, farbe := TEXT, umbruch := false) 
 	l.text = text
 	l.add_theme_font_size_override("font_size", groesse)
 	l.add_theme_color_override("font_color", farbe)
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-	l.add_theme_constant_override("outline_size", 4)
+	l.add_theme_color_override("font_outline_color", Color(0.08, 0.05, 0.03, 0.85))
+	l.add_theme_constant_override("outline_size", 5)
 	if umbruch:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
@@ -107,3 +112,30 @@ static func fenster(eltern: Control, titel: String, breite: float, hoehe: float,
 	if schliessen.is_valid():
 		kopf.add_child(knopf("Schließen  [Esc]", schliessen, 18))
 	return v
+
+
+## Eine Taste als kleines Kästchen, z. B. [E] oder [Linksklick].
+static func taste(text: String, groesse := 18) -> PanelContainer:
+	var p := PanelContainer.new()
+	var b := StyleBoxFlat.new()
+	b.bg_color = Color(0.96, 0.92, 0.82)
+	b.border_color = Color(0.55, 0.42, 0.25)
+	b.border_width_bottom = 4
+	b.set_border_width_all(2)
+	b.border_width_bottom = 4
+	b.set_corner_radius_all(6)
+	b.content_margin_left = 8
+	b.content_margin_right = 8
+	b.content_margin_top = 1
+	b.content_margin_bottom = 2
+	b.shadow_color = Color(0, 0, 0, 0.3)
+	b.shadow_size = 3
+	p.add_theme_stylebox_override("panel", b)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_override("font", Look.schrift(600))
+	l.add_theme_font_size_override("font_size", groesse)
+	l.add_theme_color_override("font_color", Color(0.22, 0.14, 0.07))
+	p.add_child(l)
+	return p

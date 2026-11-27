@@ -14,6 +14,7 @@ var wurm := false
 var doppel := false
 var angeknackst := false
 var gehalten := false
+var fliegt := false             # wird gerade per Flugbahn in einen Behälter gelenkt
 var _alter := 0.0
 var _meshknoten: Node3D
 
@@ -62,81 +63,63 @@ func _aufbauen() -> void:
 	can_sleep = true
 	var info: Dictionary = Data.NUESSE[nuss]
 	var r: float = info.groesse
-	var form: Vector3 = info.form
-	var farbe: Color = info.farbe
-	var kernfarbe: Color = info.kern
-	if faul:
-		farbe = Color(0.26, 0.3, 0.16)
 	_meshknoten = Node3D.new()
 	add_child(_meshknoten)
 	var cs := CollisionShape3D.new()
+	var variante := randi() % 3
 	match art:
 		"nuss":
 			mass = 0.05
-			var m: Material
-			if gold:
-				m = Bau.mat(Color(1.0, 0.78, 0.2), 0.25, 0.9)
-			else:
-				m = Bau.mat(farbe, 0.75)
-			var kugel := Bau.mesh_instanz(Bau.kugel_mesh(r, false, 18), m)
-			kugel.scale = form
-			_meshknoten.add_child(kugel)
-			# Naht der Nuss
-			var naht := MeshInstance3D.new()
-			var torus := TorusMesh.new()
-			torus.inner_radius = r * 0.96
-			torus.outer_radius = r * 1.04
-			torus.rings = 24
-			torus.ring_segments = 6
-			naht.mesh = torus
-			naht.material_override = Bau.mat(farbe.darkened(0.3), 0.8)
-			naht.rotation_degrees = Vector3(0, 0, 90)
-			naht.scale = Vector3(form.y, 1.0, form.z)
-			_meshknoten.add_child(naht)
+			var mi := Bau.mesh_instanz(Nussmodelle.ganz(nuss, variante, 1), Look.nuss(nuss, gold, faul))
+			_meshknoten.add_child(mi)
 			if angeknackst:
-				var riss := Bau.mesh_instanz(Bau.box_mesh(Vector3(r * 0.15, r * 1.6, r * 0.15)), Bau.mat(Color(0.15, 0.1, 0.05)))
-				riss.position = Vector3(r * 0.7 * form.x, 0, 0)
-				_meshknoten.add_child(riss)
+				var m := Look.nuss(nuss, gold, faul, true)
+				m.set_shader_parameter("riss", 0.35)
+				mi.material_override = m
+			var aabb := mi.mesh.get_aabb()
 			var s := SphereShape3D.new()
-			s.radius = r * max(form.x, form.y, form.z) * 0.85
+			s.radius = minf(aabb.size.x, minf(aabb.size.y, aabb.size.z)) * 0.5
 			cs.shape = s
 		"haelfte":
 			mass = 0.02
-			var halb := Bau.mesh_instanz(Bau.kugel_mesh(r * 0.82, true, 14), Bau.mat(kernfarbe if not gold else Color(1, 0.85, 0.35), 0.6, 0.6 if gold else 0.0))
-			halb.scale = Vector3(form.x, form.y * 0.9, form.z)
-			_meshknoten.add_child(halb)
+			var k := Bau.mesh_instanz(Nussmodelle.kernhaelfte(nuss, 0), Look.kern(nuss, gold))
+			_meshknoten.add_child(k)
 			var b := BoxShape3D.new()
-			b.size = Vector3(r * 1.5 * form.x, r * 0.8, r * 1.5 * form.z)
+			var ab := k.mesh.get_aabb()
+			b.size = ab.size * Vector3(0.9, 1.0, 0.9)
 			cs.shape = b
-			cs.position = Vector3(0, r * 0.35, 0)
+			cs.position = ab.get_center()
 		"bruch":
 			mass = 0.01
-			var g := Vector3(randf_range(0.5, 0.8), randf_range(0.35, 0.6), randf_range(0.5, 0.8)) * r
-			var stueck := Bau.mesh_instanz(Bau.box_mesh(g), Bau.mat(kernfarbe.darkened(0.08), 0.7))
-			stueck.rotation = Vector3(randf(), randf(), randf())
-			_meshknoten.add_child(stueck)
+			var st := Bau.mesh_instanz(Nussmodelle.bruchstueck(nuss, variante), Look.kern(nuss))
+			_meshknoten.add_child(st)
 			var b2 := BoxShape3D.new()
-			b2.size = g
+			b2.size = st.mesh.get_aabb().size * 0.9
 			cs.shape = b2
 		"schale":
 			mass = 0.01
-			var schale := Bau.mesh_instanz(Bau.kugel_mesh(r * 0.9, true, 12), Bau.mat(farbe.darkened(0.1), 0.9))
-			schale.scale = Vector3(form.x * 0.9, form.y * 0.45, form.z * 0.9)
-			schale.rotation_degrees.x = 180
-			_meshknoten.add_child(schale)
+			var sch := MeshInstance3D.new()
+			sch.mesh = Nussmodelle.schalenhaelfte(nuss, variante)
+			sch.set_surface_override_material(0, Look.nuss(nuss, false, faul))
+			sch.set_surface_override_material(1, Look.schale_innen(nuss))
+			sch.rotation_degrees.x = 180 if randf() < 0.5 else 0
+			_meshknoten.add_child(sch)
 			var b3 := BoxShape3D.new()
-			b3.size = Vector3(r * 1.4, r * 0.3, r * 1.4)
+			var ab3 := sch.mesh.get_aabb()
+			b3.size = Vector3(ab3.size.x, r * 0.5, ab3.size.z) * 0.9
 			cs.shape = b3
 		"wurm":
 			mass = 0.005
-			var kapsel := CapsuleMesh.new()
-			kapsel.radius = 0.008
-			kapsel.height = 0.06
-			var w := Bau.mesh_instanz(kapsel, Bau.mat(Color(0.95, 0.6, 0.65), 0.5))
-			w.rotation_degrees.z = 90
-			_meshknoten.add_child(w)
+			var wk := Node3D.new()
+			_meshknoten.add_child(wk)
+			var wm := Look.plastik(Color(0.98, 0.62, 0.66), 0.4)
+			for i in 5:
+				var kugel := Bau.mesh_instanz(Bau.kugel_mesh(0.0085 - i * 0.0007, false, 8), wm, Vector3(0.012 * i - 0.024, 0, 0))
+				wk.add_child(kugel)
+			for a in [-1, 1]:
+				wk.add_child(Bau.mesh_instanz(Bau.kugel_mesh(0.002, false, 6), Look.plastik(Color(0.05, 0.05, 0.05)), Vector3(-0.03, 0.004, 0.004 * a)))
 			var b4 := BoxShape3D.new()
-			b4.size = Vector3(0.06, 0.02, 0.02)
+			b4.size = Vector3(0.06, 0.018, 0.018)
 			cs.shape = b4
 	add_child(cs)
 	linear_damp = 0.4
@@ -153,6 +136,8 @@ func _physics_process(delta: float) -> void:
 	# Schalen und Bruch auf dem Boden verschwinden nach einer Weile (Leistung).
 	if (art == "schale" or art == "bruch") and _alter > 60.0 and global_position.y < 0.3:
 		queue_free()
+	if art == "wurm":
+		_meshknoten.scale = Vector3(1.0 + sin(_alter * 9.0) * 0.12, 1.0, 1.0)
 	# Würmer kriechen langsam Richtung Glas.
 	if art == "wurm" and _alter > 1.5 and sleeping == false and linear_velocity.length() < 0.2:
 		var welt := get_tree().current_scene

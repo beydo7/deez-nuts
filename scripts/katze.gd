@@ -14,8 +14,8 @@ var streichel_koerper: Interaktiv
 func _ready() -> void:
 	_koerper = Node3D.new()
 	add_child(_koerper)
-	var fell := Bau.mat(Color(0.85, 0.55, 0.25), 0.9)
-	var weiss := Bau.mat(Color(0.97, 0.95, 0.9), 0.9)
+	var fell := Look.stoff(Color(0.88, 0.58, 0.28))
+	var weiss := Look.stoff(Color(0.97, 0.95, 0.9))
 	var leib := Bau.mesh_instanz(Bau.kugel_mesh(0.12), fell, Vector3(0, 0.17, 0))
 	leib.scale = Vector3(0.8, 0.8, 1.6)
 	_koerper.add_child(leib)

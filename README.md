@@ -21,40 +21,54 @@ Wer das Repo neu klont: Godot 4.7.2 (Standard-Version, nicht .NET) von https://g
 
 ## Steuerung
 
+**Im Raum**
+
 | Taste | Aktion |
 | --- | --- |
 | WASD, Maus | laufen, schauen |
 | Shift / Leertaste | rennen / springen |
-| E | greifen, ablegen, in den Knacker legen, ins Glas legen, benutzen |
-| Linksklick halten | Nussknacker zudrücken, loslassen zum Knacken |
-| Linksklick mit etwas in der Hand | werfen |
+| E | benutzen, nehmen, ablegen, hineinlegen; am Nussknacker: hinsetzen |
+| Rechtsklick (mit etwas in der Hand) | werfen |
 | Q | fallen lassen |
-| F | Schalen vom Tisch in den Eimer wischen |
+| R | Hebel ziehen (Nüsse vom Berg) |
 | Tab | Talentbaum |
-| H | Hilfsring am Fadenkreuz an/aus |
 | Esc | Menü, Einstellungen, Speichern |
 | F9 / F10 / F11 | Testhilfen: +5.000 Münzen / +1.000 Nüsse / +5 Meisterpunkte |
 
-## Was im Prototyp drin ist
+**An der Knackbank (Nahansicht)**
 
-- **Knacken mit Gefühl:** Fünf Phasen beim Zudrücken (zu früh, Riss, Sweet Spot, Bruch, Matsch). Knarzen, Risse und Zittern zeigen den Druck; der Hilfsring ist abschaltbar. Combo bis +100 % (mit Talent mehr).
-- **Sechs Nusssorten** in drei Bergschichten: Haselnuss, Walnuss, Mandel, Pekannuss, Paranuss (Sweet Spot springt), Macadamia (braucht den Schraubstock). Dazu goldene, faule, doppelte und Wurmnüsse.
-- **Fünf Werkzeuge** mit je 10 Upgrade-Stufen: Hände, Holz-Nussknacker, Metall-Hebelknacker, Hammer, Schraubstock.
-- **Alles anfassbar:** Nüsse, Kernhälften, Bruch, Schalen, Würmer, Glas, Eimer, Bruchschale und Maschinenkiste sind Physik-Objekte. Gefäße trägt man zur Verkaufsklappe, den Eimer zum Ofen.
-- **Maschinen:** Nussrutsche, Glasdeckel, Katze Mimi, Tisch-Sieb, Schalenofen, Walzenknacker, Förderband, Eichhörnchen-Laufrad.
-- **Werkstatt** öffnet sich nach 1.000 Nüssen.
-- **Eichhörnchen** mit Gier (je voller das Glas, desto öfter) und Raubzügen ab Ära 2. Verscheuchen mit E, mit Würfen oder durch die Katze.
-- **Talentbaum** mit 19 Talenten in vier Zweigen, im Wald die Wahl zwischen Abwehr und Zähmen.
-- **Meisterpunkte** aus Meilensteinen (100 × k^1,75 Nüsse) und Bestellungen.
-- **Bestellungen** von Kunden mit Frist, Lohn und Meisterpunkt.
-- **Speichern** automatisch alle 30 Sekunden und beim Beenden.
-- **Abspann**, wenn der Berg leer ist.
+| Taste | Aktion |
+| --- | --- |
+| Linksklick halten | zudrücken – loslassen, wenn die Nuss zittert und knistert |
+| Rechtsklick | Schalen in den Eimer wischen (oder Eichhörnchen verjagen) |
+| R | Hebel ziehen |
+| Maus | etwas umschauen (z. B. zum Fenster) |
+| E / Esc / S | aufstehen |
+| H | Hilfsring um die Nuss an/aus |
+
+## Was drin ist
+
+- **Knackbank-Ansicht wie in Potato Please:** Man setzt sich an den Tisch, die Kamera fährt nah heran, die eigenen Hände greifen den Nussknacker. Die nächste Nuss wird automatisch aus der Schale nachgelegt.
+- **Knacken mit Wumms:** Risse wachsen sichtbar über die Schale, die Nuss wird gequetscht und zittert im richtigen Moment, Knarzen wird höher, im Sweet Spot knistert es. Beim Knack: kurzer Einfrier-Moment, Kamerastoß, Splitter, Staub und Funken, ein Stempel „PERFEKT!“. Combo bis +100 % (mit Talent mehr).
+- **Kerne fliegen ins Glas** und liegen dort sichtbar, Stück für Stück. Bruch fliegt in die Bruchschale. Schalen bleiben liegen, bis man sie wegwischt.
+- **Sechs Nusssorten** mit eigener Form und Schale (alles aus Code erzeugt): Haselnuss, Walnuss, Mandel, Pekannuss, Paranuss (Sweet Spot springt), Macadamia (braucht den Schraubstock). Dazu goldene, faule, doppelte und Wurmnüsse.
+- **Fünf Werkzeuge** mit eigenem Modell und eigener Bewegung: Hände, Holz-Hebelpresse, Metall-Hebelpresse, Hammer (halten = ausholen), Schraubstock (Kurbel). Je 10 Upgrade-Stufen.
+- **Verkaufen:** Glas nehmen, zur Verkaufsklappe tragen, dort [E]. Münzen spritzen, der Betrag fliegt in die Kasse.
+- **Maschinen:** Nussrutsche, Großes Glas, Glasdeckel, Katze Mimi, Rohrpost (volles Glas verkauft sich selbst), Tisch-Sieb, Schalenofen, Walzenknacker, Förderband, Eichhörnchen-Laufrad.
+- **Geführter Einstieg:** 7 Ziele bringen einen durch die ersten Minuten, danach zeigt das Spiel immer das nächste lohnende Ziel mit Fortschrittsbalken.
+- **Werkstatt** öffnet sich nach 600 Nüssen (Schicht „Hang“).
+- **Eichhörnchen** mit Gier (je voller das Glas, desto öfter) und Raubzügen ab Ära 2. Verscheuchen mit E, Rechtsklick an der Bank, Würfen oder durch die Katze.
+- **Talentbaum** mit 19 Talenten, im Wald die Wahl zwischen Abwehr und Zähmen.
+- **Meisterpunkte** aus Meilensteinen und Bestellungen. Bestellungen hängen auch an der Pinnwand.
+- **Optik:** prozedurale Shader für Holz, Putz, Nussschalen, Kerne, Gras und Laub, warmes Licht mit Lichtstrahlen durchs Fenster, wiegende Grashalme, ein Berg aus Tausenden Nüssen.
+- **Ton:** über 35 erzeugte Geräusche, gemütliche Musikschleife und Vogelgezwitscher.
+- **Speichern** automatisch alle 30 Sekunden und beim Beenden. **Abspann**, wenn der Berg leer ist.
 
 ## Was noch fehlt (bewusst)
 
 - Freies Aufstellen und Verbinden von Maschinen (jetzt feste Plätze)
 - Ära 4 und 5 mit eigenen Räumen, Kokosnuss, Pressen, Dampfhammer, Eichhörnchen-König
-- Blender-Modelle (alles ist noch aus Grundformen gebaut), echte Hände, Musik
+- Blender-Modelle (alles ist noch aus Code gebaut)
 - Koop
 
 Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4dkKBXe7qzwhuc2TQ86Z) und kurz in [`docs/konzept.md`](docs/konzept.md).
@@ -65,13 +79,22 @@ Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4
 | --- | --- |
 | `scripts/autoload/data.gd` | Alle Spielwerte: Nüsse, Werkzeuge, Maschinen, Schichten, Talente. **Balancing passiert hier.** |
 | `scripts/autoload/game.gd` | Spielstand, Wirtschaft, Talente, Bestellungen, Speichern |
-| `scripts/autoload/sfx.gd` | Soundeffekte |
-| `scripts/world.gd` | Baut Küche, Werkstatt und Hof, steuert Maschinen und Eichhörnchen |
-| `scripts/knackstation.gd` | Die Knack-Mechanik |
-| `scripts/spieler.gd` | Ego-Steuerung, Greifen, Tragen, Werfen |
+| `scripts/autoload/sfx.gd` | Soundeffekte, Musik und Atmo |
+| `scripts/world.gd` | Baut Küche, Werkstatt und Hof, steuert Maschinen, Verkauf und Eichhörnchen |
+| `scripts/knackstation.gd` | Die Knack-Mechanik und die Werkzeug-Modelle |
+| `scripts/spieler.gd` | Ego-Steuerung, Knackbank-Ansicht, Greifen, Tragen, Werfen, Kamerawackeln |
+| `scripts/hand.gd` | Die Hände mit beweglichen Fingern |
+| `scripts/look.gd` | Alle Materialien und die Schrift |
+| `scripts/nussmodelle.gd` | Erzeugt Nüsse, Kerne, Schalen und Bruch aus Code |
+| `scripts/einrichtung.gd` | Möbel und Deko |
+| `scripts/effekte.gd` | Partikel: Splitter, Staub, Funken, Münzen |
+| `shaders/` | Prozedurale Materialien (Holz, Putz, Nuss mit Rissen, Kern, Gras, Laub, Leuchtrand) |
+| `fonts/` | Schrift Fredoka (SIL Open Font License) |
 | `scripts/items/` | Nüsse und Teile (`item.gd`), Gefäße (`behaelter.gd`) |
 | `scripts/ui/` | HUD, Menüs, Stil |
-| `sounds/` | Soundeffekte, erzeugt mit `tools/generate_sfx.py` |
+| `sounds/` | Soundeffekte, Musik und Atmo, erzeugt mit `tools/generate_sfx.py` |
 | `tests/` | Selbsttest und automatische Bildschirmfotos |
 
 Selbsttest ohne Fenster: `godot --headless --path . -- --selbsttest`
+
+Bildschirmfotos aller Situationen: `godot --path . -- --selbsttest --bilder=C:/irgendwo`
