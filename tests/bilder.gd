@@ -64,9 +64,14 @@ func _ready() -> void:
 			["01k_brunnen", Vector2(-6.5, 4.5), Vector3(-10.0, 1.0, 2.0)],
 			["01l_stall_holzlager", Vector2(9.0, 13.0), Vector3(15.5, 0.8, 7.0)],
 			["01m_traktor", Vector2(25.0, -42.5), Vector3(19.5, 1.0, -39.5)],
-			["01n_werkstatt", Vector2(4.0, 0.5), Vector3(8.6, 0.9, 2.2)]]:
+			["01n_werkstatt", Vector2(4.0, 0.5), Vector3(8.6, 0.9, 2.2)],
+			["01o_siedlung", Vector2(-42.0, 16.0), Vector3(-53.0, 1.5, 22.0)],
+			["01p_heuschober", Vector2(-48.0, 5.0), Vector3(-56.0, 1.5, 4.0)],
+			["01q_picknick", Vector2(-36.0, 33.0), Vector3(-40.0, 0.7, 36.0)],
+			["01r_angelplatz", Vector2(-27.0, -11.0), Vector3(-33.0, 0.2, -13.0)],
+			["01s_vom_hochsitz", Vector2(43.6, -62.7), Vector3(1.0, 3.0, -32.0), 3.8]]:
 		var p: Vector2 = blick[1]
-		s.global_position = Vector3(p.x, g.hoehe_bei(p.x, p.y) + 0.1, p.y)
+		s.global_position = Vector3(p.x, g.hoehe_bei(p.x, p.y) + 0.1 + (float(blick[3]) if blick.size() > 3 else 0.0), p.y)
 		await _warte(0.4)
 		_zielen(s, blick[2])
 		await _warte(1.0)
@@ -123,11 +128,27 @@ func _ready() -> void:
 		Game.kaufe_helfer()
 	for id in ["posten_vorn", "posten_west", "posten_ost"]:
 		Game.kaufe_posten(id)
+	for a in [2, 3, 4]:
+		welt.aeren._bauen(a, false)
 	await _warte(6.0)
 	var gipfel := Vector3(1.0, 0, -22.0)
 	_blick(s, Vector3(gipfel.x, berg.hoehe_bei(gipfel.x, gipfel.z) + 0.5, gipfel.z), deg_to_rad(180), -0.32)
 	await _warte(1.0)
 	await _foto("06_helfer_posten")
+	# Betrieb am Bergfuß und ein freigelegter Fund
+	_blick(s, Vector3(-4.0, 0.05, -8.0), 0.0, 0.0)
+	await _warte(0.3)
+	_zielen(s, Vector3(-9.6, 3.5, -3.0))
+	await _warte(0.8)
+	await _foto("06b_hochsilo_zelte")
+	Game.nuesse_vom_berg(berg.abbauen(Vector3(-6.0, 0, -23.5), 8.0, 150000))
+	Game.nuesse_vom_berg(berg.abbauen(Vector3(-3.0, 0, -17.0), 7.0, 60000))
+	await _warte(5.0)
+	_blick(s, Vector3(-3.0, berg.hoehe_bei(-3.0, -13.5) + 0.3, -13.5), 0.0, 0.0)
+	await _warte(0.4)
+	_zielen(s, Vector3(-6.0, 1.2, -23.5))
+	await _warte(1.0)
+	await _foto("06c_opas_erste_huette")
 	# 7: An der Knackbank, Walnuss mitten im Zudrücken
 	Game.einlagern({"wal": 40, "hasel": 20})
 	welt.hebel_ziehen()
