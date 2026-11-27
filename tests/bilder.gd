@@ -18,10 +18,42 @@ func _ready() -> void:
 	Game.erster_start = false
 	var s: Spieler = welt.spieler
 	var berg: Nussberg = welt.berg
+	# Nur bestimmte Blicke: --blicke=name:x,z,zielx,ziely,zielz;name2:...
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--blicke="):
+			print("BLICKE ", arg)
+			for teil in arg.substr(9).split(";"):
+				var nz := teil.split(":")
+				var w := nz[1].split(",")
+				var px := float(w[0])
+				var pz := float(w[1])
+				var hoch := float(w[5]) if w.size() > 5 else 0.0
+				s.global_position = Vector3(px, welt.gelaende.hoehe_bei(px, pz) + 0.1 + hoch, pz)
+				await _warte(0.4)
+				_zielen(s, Vector3(float(w[2]), float(w[3]), float(w[4])))
+				await _warte(1.0)
+				await _foto(nz[0])
+			get_tree().quit(0)
+			return
 	# 1: Vor der Hütte, Blick auf den Nussberg
 	_blick(s, Vector3(1.0, 0.05, -6.2), 0.0, 0.05)
 	await _warte(1.2)
 	await _foto("01_hof_berg")
+	# Das Tal: Orte aus dem Weltplan
+	var g: Gelaende = welt.gelaende
+	for blick in [
+			["01b_hoftor", Vector2(2.6, 26.0), Vector3(1.0, 6.0, -32.0)],
+			["01c_hochsitz", Vector2(43.0, -60.0), Vector3(-10.0, 2.0, -10.0)],
+			["01d_wasserfall", Vector2(-43.0, -55.0), Vector3(-52.0, 2.6, -69.0)],
+			["01e_omas_bruecke", Vector2(-20.0, 4.0), Vector3(-29.0, 0.6, 11.6)],
+			["01f_bach_sued", Vector2(-12.0, 37.5), Vector3(-30.0, 0.0, 10.0)],
+			["01g_waldrand", Vector2(-24.0, -64.0), Vector3(-50.0, 4.0, -80.0)]]:
+		var p: Vector2 = blick[1]
+		s.global_position = Vector3(p.x, g.hoehe_bei(p.x, p.y) + 0.1, p.y)
+		await _warte(0.4)
+		_zielen(s, blick[2])
+		await _warte(1.0)
+		await _foto(blick[0])
 	# 2: Am Berg mit dem Kochlöffel sammeln
 	Game.sammler["loeffel"] = 0
 	Game.waehle_sammler("loeffel")

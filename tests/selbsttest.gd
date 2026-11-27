@@ -27,6 +27,7 @@ func _ready() -> void:
 		welt.menues.schliessen()
 	Game.erster_start = false
 	welt.spieler.gesperrt = false
+	await _tal()
 	await _berg_und_sammeln()
 	await _abliefern()
 	await _knacken()
@@ -45,6 +46,51 @@ func _ready() -> void:
 	for f in fehler:
 		print("   - ", f)
 	get_tree().quit(1 if fehler.size() > 0 else 0)
+
+
+func _tal() -> void:
+	print("-- Tal, Bach, Wald")
+	var g: Gelaende = welt.gelaende
+	var raum: PhysicsDirectSpaceState3D = welt.get_world_3d().direct_space_state
+	# Talsohle eben an Hütte, Berg, Silo und Posten
+	for p in [Vector2(3, 0), Vector2(1, -32), Vector2(-1.15, -5.6), Vector2(6.5, -9), Vector2(-23, -22), Vector2(24.5, -24), Vector2(1, -57)]:
+		pruefe(absf(g.hoehe_bei(p.x, p.y) - WeltPlan.SOHLE) < 0.05, "Boden eben bei %s" % p)
+	pruefe(g.hoehe_bei(0, -125) > 8.0 and g.hoehe_bei(100, 0) > 8.0, "Hügel am Talrand")
+	pruefe(g.hoehe_bei(44, -63) > 5.0, "Hügel mit dem Hochsitz")
+	# Bachbett liegt unter dem Wasser, Wasserfall oben auf der Felsstufe
+	var mitte: Vector3 = WeltPlan.BACH[6]
+	pruefe(g.hoehe_bei(mitte.x, mitte.z) < mitte.y, "Bachbett unter der Wasserfläche")
+	var kante: Vector3 = WeltPlan.BACH[WeltPlan.BACH_KANTE - 1]
+	pruefe(g.hoehe_bei(kante.x, kante.z) > 2.5, "Bach oberhalb des Wasserfalls liegt hoch")
+	pruefe(g.bach_abstand(mitte.x, mitte.z) < 1.0 and g.bach_abstand(3, 0) > 20.0, "Bachabstand stimmt")
+	pruefe(g.weg_bei(2.0, 22.0) > 0.8, "Weg am Hoftor")
+	# Kollision des Geländes
+	var q := PhysicsRayQueryParameters3D.create(Vector3(0, 40, -120), Vector3(0, -10, -120), Data.L_WELT)
+	var t: Dictionary = raum.intersect_ray(q)
+	pruefe(not t.is_empty() and absf(t.position.y - g.hoehe_bei(0, -120)) < 0.3, "Gelände hat Kollision")
+	# Brücken sind begehbar
+	for br in ["bruecke_oma", "bruecke_hof"]:
+		var o: Vector3 = WeltPlan.ORTE[br]
+		var q2 := PhysicsRayQueryParameters3D.create(Vector3(o.x, 10, o.z), Vector3(o.x, -5, o.z), Data.L_WELT)
+		var t2: Dictionary = raum.intersect_ray(q2)
+		pruefe(not t2.is_empty() and t2.position.y > g.hoehe_bei(o.x, o.z) + 0.2, "%s hat eine begehbare Fläche" % br)
+		pruefe(Modelle.plaetze.has(br), "Modellplatz %s angelegt" % br)
+	# Wasser und Wald sind da
+	pruefe(welt.find_child("Bach", true, false) != null and welt.find_child("Bach", true, false).get_child_count() > 4, "Bach mit Wasser, Becken, Wasserfall, Klang")
+	var wald := welt.find_child("Wald", true, false)
+	pruefe(wald != null and wald.get_child_count() > 20, "Wald angelegt (%d Teile)" % (wald.get_child_count() if wald else 0))
+	# Talgrenze hält den Spieler im Tal
+	var s: Spieler = welt.spieler
+	var aussen := WeltPlan.TAL_MITTE + Vector2(0, -WeltPlan.TAL_RADIEN.y * (WeltPlan.GRENZE - 0.1))
+	s.global_position = g.position(aussen.x, aussen.y) + Vector3(0, 0.5, 0)
+	s.rotation.y = 0.0
+	Input.action_press("vor")
+	await warte(2.0)
+	Input.action_release("vor")
+	pruefe(WeltPlan.tal_r(s.global_position.x, s.global_position.z) < WeltPlan.GRENZE + 0.05, "Talgrenze hält den Spieler auf")
+	print("   Modellplätze: ", Modelle.plaetze)
+	s.global_position = Vector3(0.15, 0.05, -1.0)
+	await warte(0.3)
 
 
 func _berg_und_sammeln() -> void:

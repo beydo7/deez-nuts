@@ -28,6 +28,7 @@ var eimer: Behaelter
 var bruchschale: Behaelter
 var kiste: Behaelter = null
 var berg: Nussberg
+var gelaende: Gelaende
 var flug: NussFlug
 
 var _schale_bereich: Area3D
@@ -219,19 +220,13 @@ func _hof_und_berg() -> void:
 	var hof := Node3D.new()
 	hof.name = "Hof"
 	add_child(hof)
-	# Boden
-	var boden := PlaneMesh.new()
-	boden.size = Vector2(260, 260)
-	Bau.teil(hof, boden, Look.gras(), Vector3(0, -0.025, -30))
-	var bk := StaticBody3D.new()
-	bk.collision_layer = Data.L_WELT
-	var bcs := CollisionShape3D.new()
-	var bb := BoxShape3D.new()
-	bb.size = Vector3(260, 0.2, 260)
-	bcs.shape = bb
-	bcs.position = Vector3(0, -0.125, -30)
-	bk.add_child(bcs)
-	hof.add_child(bk)
+	# Das Tal: Gelände mit Hügeln und Bachbett, Wasser, Wald
+	gelaende = Gelaende.new()
+	gelaende.erzeugen()
+	add_child(gelaende)
+	add_child(Bach.new(gelaende))
+	add_child(Wald.new(gelaende))
+	_bruecken(hof)
 	# Der Nussberg (begehbar, abbaubar)
 	berg = Nussberg.new()
 	if not berg.laden(Game.BERG_PFAD):
@@ -240,19 +235,7 @@ func _hof_und_berg() -> void:
 			berg.an_rest_anpassen(Game.berg_rest())
 	add_child(berg)
 	_grashalme(hof)
-	# Bäume rund um den Berg, Zaun, Hügel
 	_hof_ausstatten(hof)
-	for i in 26:
-		Einrichtung.tanne(hof, Vector3(-70 + i * 5.6 + _rng.randf_range(-1, 1), 0, -82 + _rng.randf_range(-4, 4)), _rng.randf_range(7, 12))
-	var huegel := Look.gras()
-	for hg in [[Vector3(-50, -8, -110), Vector3(45, 18, 22)], [Vector3(30, -10, -120), Vector3(60, 22, 25)], [Vector3(85, -6, -70), Vector3(30, 14, 30)], [Vector3(-90, -6, -60), Vector3(30, 14, 30)]]:
-		Bau.teil(hof, Bau.kugel_mesh(1.0, false, 24), huegel, hg[0], Vector3.ZERO, hg[1])
-	var zaunholz := Look.holz(Look.ALTHOLZ, 10.0, 0.0)
-	for i in 70:
-		var x := -35.0 + i
-		Bau.teil(hof, Bau.box_mesh(Vector3(0.09, 1.0, 0.05)), zaunholz, Vector3(x, 0.5, -64), Vector3(0, 0, _rng.randf_range(-3, 3)))
-	for y in [0.35, 0.8]:
-		Bau.teil(hof, Bau.box_mesh(Vector3(70, 0.08, 0.04)), zaunholz, Vector3(0, y, -63.96))
 	# Schild mit dem Zählerstand am Weg zum Berg
 	var schild := Bau.holzschild(hof, "NUSSBERG", Vector3(3.6, 1.6, -7.2), Vector2(1.7, 0.85), Vector3(0, -15, 0), 150)
 	Bau.teil(hof, Bau.box_mesh(Vector3(0.1, 1.6, 0.1)), Look.holz(Look.ALTHOLZ), Vector3(3.6, 0.8, -7.25))
@@ -265,44 +248,8 @@ func _hof_und_berg() -> void:
 
 
 
-## Bäume, Büsche, Steine, Pilze und Holz aus den Modell-Paketen (KayKit Forest, Kenney Nature).
-## Hält Berg, Hütte, Trampelpfad und die Förderband-Strecken frei.
+## Kleinkram am Silo. Der Bewuchs des Tals kommt aus wald.gd, die Orte aus dem Weltplan.
 func _hof_ausstatten(hof: Node3D) -> void:
-	var r := RandomNumberGenerator.new()
-	r.seed = 4711
-	var baeume := ["wald/Tree_1_A_Color1.gltf", "wald/Tree_1_B_Color1.gltf", "wald/Tree_2_A_Color1.gltf", "wald/Tree_2_B_Color1.gltf",
-		"wald/Tree_3_A_Color1.gltf", "wald/Tree_3_B_Color1.gltf", "wald/Tree_1_C_Color1.gltf", "wald/Tree_2_C_Color1.gltf"]
-	var baum_pos := [Vector3(-27, 0, -14), Vector3(-31, 0, -30), Vector3(31, 0, -11), Vector3(33, 0, -31), Vector3(-22, 0, -55),
-		Vector3(19, 0, -57), Vector3(-12, 0, 6), Vector3(14, 0, 8), Vector3(-34, 0, -44), Vector3(36, 0, -44), Vector3(-6, 0, -66),
-		Vector3(9, 0, -66), Vector3(-26, 0, 2), Vector3(26, 0, 3), Vector3(-17, 0, 10), Vector3(20, 0, 12), Vector3(-38, 0, -8),
-		Vector3(39, 0, -22), Vector3(-40, 0, -58), Vector3(40, 0, -58)]
-	for i in baum_pos.size():
-		var p: Vector3 = baum_pos[i]
-		var b := Modelle.setze(hof, baeume[i % baeume.size()], p, r.randf() * 360.0, r.randf_range(1.15, 1.5))
-		if i % 3 != 1:
-			Modelle.herbstlich(b)
-		_stamm_kollision(hof, p, 0.32)
-	# Kleinkram verteilt
-	var deko := [
-		["wald/Bush_1_C_Color1.gltf", 1.0, 1.4, 14], ["wald/Bush_2_C_Color1.gltf", 0.7, 1.0, 8], ["wald/Bush_3_A_Color1.gltf", 1.0, 1.5, 10],
-		["wald/Rock_1_D_Color1.gltf", 0.8, 1.3, 6], ["wald/Rock_2_C_Color1.gltf", 0.6, 1.1, 6], ["wald/Rock_3_A_Color1.gltf", 0.9, 1.4, 5],
-		["wald/Grass_1_C_Color1.gltf", 1.0, 1.4, 40], ["wald/Grass_2_C_Color1.gltf", 0.8, 1.1, 30],
-		["natur/mushroom_redGroup.glb", 2.0, 2.8, 14], ["natur/mushroom_tanGroup.glb", 2.0, 2.8, 12],
-		["natur/flower_redA.glb", 2.5, 3.2, 20], ["natur/flower_yellowA.glb", 2.5, 3.2, 20], ["natur/flower_purpleA.glb", 2.5, 3.2, 16],
-		["natur/stump_old.glb", 2.6, 3.2, 5], ["natur/stump_round.glb", 2.6, 3.2, 4], ["natur/log_large.glb", 2.4, 2.8, 4],
-		["natur/crop_pumpkin.glb", 2.0, 2.6, 6]]
-	for d in deko:
-		var gesetzt := 0
-		var versuche := 0
-		while gesetzt < int(d[3]) and versuche < 400:
-			versuche += 1
-			var p := Vector3(r.randf_range(-42, 44), 0, r.randf_range(-62, 14))
-			if not _hof_frei(p, 1.2):
-				continue
-			var m := Modelle.setze(hof, d[0], p, r.randf() * 360.0, r.randf_range(d[1], d[2]))
-			if str(d[0]).contains("Bush") and r.randf() < 0.45:
-				Modelle.herbstlich(m)
-			gesetzt += 1
 	# Holzlager und Fässer neben dem Silo
 	Modelle.setze(hof, "rohstoffe/Wood_Log_Stack.gltf", Vector3(-3.6, 0, -4.6), 90.0, 0.9)
 	Modelle.setze(hof, "rohstoffe/Pallet_Wood.gltf", Vector3(1.2, 0, -4.5), 8.0, 0.8)
@@ -312,39 +259,19 @@ func _hof_ausstatten(hof: Node3D) -> void:
 	Modelle.setze(hof, "natur/log_stack.glb", Vector3(5.2, 0, -3.9), 90.0, 2.6)
 
 
-## Ist hier Platz für Deko? Nicht auf dem Berg, nicht an der Hütte, nicht auf Wegen oder Bändern.
-func _hof_frei(p: Vector3, abstand: float) -> bool:
-	var mitte := Nussberg.MITTE
-	if Vector2(p.x - mitte.x, p.z - mitte.z).length() < Nussberg.RADIUS + 2.5:
-		return false
-	if p.x > -7.0 and p.x < 7.5 and p.z > -10.0 and p.z < 5.5:
-		return false
-	if p.z < -63.0:
-		return false
-	for po in Data.POSTEN:
-		var punkte: Array = [po.pos] + po.weg + [ABGABE_POS]
-		if Vector2(p.x - po.pos.x, p.z - po.pos.z).length() < 4.0 + abstand:
-			return false
-		for i in punkte.size() - 1:
-			var a := Vector2(punkte[i].x, punkte[i].z)
-			var b := Vector2(punkte[i + 1].x, punkte[i + 1].z)
-			var q := Geometry2D.get_closest_point_to_segment(Vector2(p.x, p.z), a, b)
-			if q.distance_to(Vector2(p.x, p.z)) < 1.5 + abstand:
-				return false
-	return true
+## Brücken über den Bach (Modellplätze für Blender, bis dahin aus Holz gebaut).
+func _bruecken(hof: Node3D) -> void:
+	for b in [["bruecke_oma", Vector2(-24.0, 10.0), Vector2(-33.0, 13.4), 7.6, 0.55],
+			["bruecke_hof", Vector2(2.4, 31.0), Vector2(2.6, 39.0), 6.4, 0.25]]:
+		var von: Vector2 = b[1]
+		var bis: Vector2 = b[2]
+		var richtung := (bis - von).normalized()
+		var mitte := gelaende.position(WeltPlan.ORTE[b[0]].x, WeltPlan.ORTE[b[0]].z)
+		mitte.y = maxf(gelaende.hoehe_bei(von.x, von.y), gelaende.hoehe_bei(bis.x, bis.y))
+		var laenge: float = b[3]
+		var bogen: float = b[4]
+		Modelle.platz(hof, b[0], mitte, rad_to_deg(atan2(-richtung.y, richtung.x)), func(k: Node3D): Ersatz.bruecke(k, laenge, 2.0 if b[0] == "bruecke_oma" else 3.0, bogen))
 
-
-func _stamm_kollision(eltern: Node3D, pos: Vector3, radius: float) -> void:
-	var k := StaticBody3D.new()
-	k.collision_layer = Data.L_WELT
-	var cs := CollisionShape3D.new()
-	var z := CylinderShape3D.new()
-	z.radius = radius
-	z.height = 3.0
-	cs.shape = z
-	k.add_child(cs)
-	k.position = pos + Vector3(0, 1.5, 0)
-	eltern.add_child(k)
 
 func _grashalme(hof: Node3D) -> void:
 	var halm := ArrayMesh.new()
@@ -364,15 +291,20 @@ func _grashalme(hof: Node3D) -> void:
 	mm.mesh = halm
 	var liste: Array = []
 	var versuche := 0
-	while liste.size() < 16000 and versuche < 80000:
+	while liste.size() < 42000 and versuche < 160000:
 		versuche += 1
-		var p := Vector3(_rng.randf_range(-30, 32), 0, _rng.randf_range(10, -60))
+		var p := Vector3(_rng.randf_range(-66, 68), 0, _rng.randf_range(-90, 58))
+		if WeltPlan.tal_r(p.x, p.z) > 1.0:
+			continue
 		if absf(p.x - 3.5) < 7.2 and p.z > -3.4 and p.z < 3.4:
 			continue
 		if berg.hoehe_bei(p.x, p.z) > 0.02:
 			continue
 		if Vector2(p.x - Nussberg.MITTE.x, (p.z - Nussberg.MITTE.z) * 1.08).length() < Nussberg.RADIUS * 0.92:
 			continue
+		if gelaende.bach_abstand(p.x, p.z) < 2.2 or gelaende.weg_bei(p.x, p.z) > 0.45 + _rng.randf() * 0.3:
+			continue
+		p.y = gelaende.hoehe_bei(p.x, p.z)
 		liste.append(p)
 	mm.instance_count = liste.size()
 	for i in liste.size():

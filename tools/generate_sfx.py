@@ -535,6 +535,44 @@ def atmo():
     return aus[: n - ein]
 
 
+def bach():
+    """Plätschernder Bach, 12 s Schleife (eigener Zufall, damit die anderen Dateien gleich bleiben)."""
+    rng = np.random.default_rng(31)
+    sr = 22050
+    d = 12.0
+    n = int(sr * d)
+    grund = bandpass(rng.uniform(-1, 1, n), 900, q=0.6, sr=sr) * 0.35
+    grund += tiefpass(rng.uniform(-1, 1, n), 300, sr=sr) * 0.25
+    aus = grund * (1 + 0.25 * np.sin(2 * np.pi * np.arange(n) / sr / 3.1))
+    # einzelne Gluckser: kurze, aufsteigende Töne
+    for _ in range(140):
+        st = rng.uniform(0, d - 0.1)
+        dauer = rng.uniform(0.015, 0.05)
+        x = np.arange(int(sr * dauer)) / sr
+        f0 = rng.uniform(400, 1400)
+        f = f0 * (1 + 2.5 * x / dauer)
+        g = np.sin(2 * np.pi * np.cumsum(f) / sr) * np.sin(np.pi * x / dauer) ** 2
+        p = int(sr * st)
+        aus[p:p + len(g)] += g * rng.uniform(0.05, 0.18)
+    ein = int(sr * 0.5)
+    aus[:ein] = aus[:ein] * np.linspace(0, 1, ein) + aus[-ein:] * np.linspace(1, 0, ein)
+    return aus[: n - ein]
+
+
+def wasserfall():
+    """Rauschen eines kleinen Wasserfalls, 10 s Schleife."""
+    rng = np.random.default_rng(32)
+    sr = 22050
+    d = 10.0
+    n = int(sr * d)
+    r = rng.uniform(-1, 1, n)
+    aus = tiefpass(r, 2500, sr=sr) * 0.5 + bandpass(r, 600, q=0.5, sr=sr) * 0.5
+    aus *= 1 + 0.15 * np.sin(2 * np.pi * np.arange(n) / sr / 1.7) + 0.1 * np.sin(2 * np.pi * np.arange(n) / sr / 0.43)
+    ein = int(sr * 0.5)
+    aus[:ein] = aus[:ein] * np.linspace(0, 1, ein) + aus[-ein:] * np.linspace(1, 0, ein)
+    return aus[: n - ein]
+
+
 def main():
     os.makedirs(ZIEL, exist_ok=True)
     sounds = {
@@ -580,7 +618,9 @@ def main():
         speichern(name, daten)
     speichern("musik", musik(), 0.8, MSR)
     speichern("atmo", atmo(), 0.7, 22050)
-    print(f"{len(sounds) + 2} Sounds erzeugt in {os.path.abspath(ZIEL)}")
+    speichern("bach", bach(), 0.7, 22050)
+    speichern("wasserfall", wasserfall(), 0.8, 22050)
+    print(f"{len(sounds) + 4} Sounds erzeugt in {os.path.abspath(ZIEL)}")
 
 
 if __name__ == "__main__":

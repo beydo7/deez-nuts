@@ -72,6 +72,8 @@ Abliefern geht von selbst: in den gelben Kreis am Trichter (oder an einem Außen
 - Eigene Blender-Modelle (Hütte, Maschinen und Nüsse sind noch aus Code gebaut)
 - Koop (der Code ist so angelegt, dass er später dazukommen kann)
 
+Wie die Welt aussehen soll (Karte, Orte, Geheimnisse, Etappen, Blender-Modellliste), steht im [Weltplan](https://claude.ai/artifact/7LfpnmDcRzZ3xFstdxxkPi).
+
 Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4dkKBXe7qzwhuc2TQ86Z) und kurz in [`docs/konzept.md`](docs/konzept.md).
 
 ## Aufbau
@@ -82,6 +84,12 @@ Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4
 | `scripts/autoload/game.gd` | Spielstand, Wirtschaft, Talente, Bestellungen, Speichern |
 | `scripts/autoload/sfx.gd` | Soundeffekte, Musik und Atmo |
 | `scripts/world.gd` | Baut Küche, Werkstatt und Hof, Silo, Außenposten und Bänder, steuert Maschinen, Abliefern und Eichhörnchen |
+| `scripts/welt_plan.gd` | Aufbau des Tals: Talform, Bachlauf, Wege, Orte, Baumgruppen (Karte im Weltplan) |
+| `scripts/gelaende.gd` | Das Tal als Höhenfeld mit Hügeln, Bachbett, Felsstufe, Wegen und Kollision |
+| `scripts/bach.gd` | Wasser des Bachs, Wasserfall, Gischt und Wasserrauschen |
+| `scripts/wald.gd` | Waldgürtel, Baumgruppen, Unterholz, Uferbewuchs, Blumen |
+| `scripts/streuer.gd` | Stellt Modelle massenhaft als MultiMesh auf |
+| `scripts/ersatz.gd` | Ersatzmodelle aus Code für die Blender-Modellplätze |
 | `scripts/nussberg.gd` | Der begehbare Nussberg: Höhenfeld, Abbauen, Nachrutschen, Speichern |
 | `scripts/sammelgeraet.gd` | Sammelwerkzeuge und Beutel in der Ego-Ansicht |
 | `scripts/helfer.gd` | Sammel-Eichhörnchen |
@@ -97,6 +105,7 @@ Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4
 | `scripts/effekte.gd` | Partikel: Splitter, Staub, Funken, Münzen |
 | `shaders/` | Prozedurale Materialien (Holz, Putz, Nuss mit Rissen, Kern, Gras, Laub, Leuchtrand) |
 | `fonts/` | Schrift Fredoka (SIL Open Font License) |
+| `assets/blender/` | Hier kommen die Blender-Modelle hin (`<modellplatz>.glb`), siehe `LIESMICH.md` dort |
 | `assets/` | Fertige 3D-Modelle (CC0): `wald/` KayKit Forest Nature, `natur/` Kenney Nature Kit, `kueche/` Kenney Food Kit, `rohstoffe/` KayKit Resource Bits |
 | `scripts/items/` | Nüsse und Teile (`item.gd`), Gefäße (`behaelter.gd`) |
 | `scripts/ui/` | HUD, Menüs, Stil |
