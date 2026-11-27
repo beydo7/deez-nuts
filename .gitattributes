@@ -1,0 +1,22 @@
+# Einheitliche Zeilenenden (Windows/Linux/Mac)
+* text=auto eol=lf
+
+# Windows-Skripte brauchen CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binärdateien
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.psd binary
+*.ogg binary
+*.wav binary
+*.mp3 binary
+*.blend binary
+*.fbx binary
+*.glb binary
+*.ttf binary
+*.otf binary
+*.zip binary

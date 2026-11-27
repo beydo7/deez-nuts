@@ -1,0 +1,25 @@
+# === Betriebssystem ===
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# === Editoren ===
+.vscode/
+.idea/
+*.swp
+*~
+
+# === Builds / Exporte ===
+build/
+builds/
+export/
+*.exe
+*.pck
+*.zip
+
+# === Blender-Sicherungen ===
+*.blend1
+*.blend2
+
+# === Engine ===
+# Hier den passenden Abschnitt ergänzen, sobald die Engine feststeht.
