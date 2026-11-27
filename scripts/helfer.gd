@@ -15,6 +15,9 @@ var _t := 0.0
 var _koerper: Node3D
 var _sack: MeshInstance3D
 var _leerlauf := 0.0
+var _hut: Node3D            # Zylinder und Monokel von Sir Nussbert
+var _krone: Node3D          # Mini-Krone für den Freund der Krone
+var _gruss := 0.0
 
 
 func _ready() -> void:
@@ -46,6 +49,12 @@ func _process(delta: float) -> void:
 	if welt == null:
 		return
 	_t += delta
+	if _gruss > 0.0 and _hut:
+		# Hutgruß: Zylinder lüften und wieder aufsetzen
+		_gruss -= delta
+		var k := sin(clampf(1.0 - _gruss / 1.6, 0.0, 1.0) * PI)
+		_hut.position = Vector3(0, 0.185 + k * 0.09, -0.08 - k * 0.05)
+		_hut.rotation.x = -k * 0.9
 	var berg: Nussberg = welt.berg
 	var w := Game.helfer_werte()
 	match zustand:
@@ -103,3 +112,50 @@ func _gehen(ziel: Vector3, tempo: float, delta: float, berg: Nussberg) -> bool:
 	global_position.y = boden + absf(sin(_t * 10.0)) * 0.12
 	rotation.y = atan2(-d.x, -d.z)
 	return false
+
+
+## Sir Nussbert: Zylinder und Monokel auf- oder absetzen.
+func setze_nussbert(an: bool) -> void:
+	if an and _hut == null:
+		_hut = Node3D.new()
+		_hut.position = Vector3(0, 0.185, -0.08)
+		_koerper.add_child(_hut)
+		var filz := Look.lackiert(Color(0.07, 0.07, 0.08), 0.5)
+		_hut.add_child(Bau.mesh_instanz(Bau.zylinder_mesh(0.05, 0.05, 0.006, 14), filz))
+		_hut.add_child(Bau.mesh_instanz(Bau.zylinder_mesh(0.03, 0.032, 0.07, 14), filz, Vector3(0, 0.036, 0)))
+		_hut.add_child(Bau.mesh_instanz(Bau.zylinder_mesh(0.033, 0.033, 0.012, 14), Look.stoff(Color(0.6, 0.1, 0.12)), Vector3(0, 0.01, 0)))
+		var monokel := TorusMesh.new()
+		monokel.inner_radius = 0.008
+		monokel.outer_radius = 0.011
+		var m := Bau.mesh_instanz(monokel, Look.metall(Color(0.95, 0.78, 0.3), 0.25), Vector3(0.022, -0.04, -0.045))
+		m.rotation_degrees.x = 90
+		_hut.add_child(m)
+	elif not an and _hut:
+		_hut.queue_free()
+		_hut = null
+		_gruss = 0.0
+
+
+func ist_nussbert() -> bool:
+	return _hut != null
+
+
+func hutgruss() -> void:
+	_gruss = 1.6
+	Sfx.spiele("eichhorn", -4.0, 0.7)
+
+
+## Mini-Krone: dieser Helfer ist jetzt Gesandter des Eichhörnchen-Königs.
+func setze_krone(an: bool) -> void:
+	if an and _krone == null:
+		_krone = Node3D.new()
+		_krone.position = Vector3(0, 0.178, -0.08)
+		_koerper.add_child(_krone)
+		var gold := Look.metall(Color(0.98, 0.8, 0.25), 0.25)
+		_krone.add_child(Bau.mesh_instanz(Bau.zylinder_mesh(0.026, 0.024, 0.014, 10), gold))
+		for i in 5:
+			var w := TAU * i / 5.0
+			_krone.add_child(Bau.mesh_instanz(Bau.zylinder_mesh(0.0, 0.007, 0.018, 4), gold, Vector3(cos(w) * 0.021, 0.014, sin(w) * 0.021)))
+	elif not an and _krone:
+		_krone.queue_free()
+		_krone = null

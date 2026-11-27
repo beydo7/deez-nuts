@@ -102,6 +102,8 @@ func _reiter_sammeln() -> Control:
 	v.add_child(Stil.label("Womit du am Berg sammelst. [X] wechselt zwischen deinen Werkzeugen.", 16, Stil.LEISE, true))
 	for w in Data.SAMMLER:
 		var id: String = w.id
+		if w.get("geheim", false) and not Game.sammler.has(id):
+			continue
 		var knoepfe: Array = []
 		var text: String = w.text + "\n%s Nüsse/s · Reichweite %.1f m" % [str(w.rate).replace(".", ","), w.reichweite]
 		if int(w.aera) > Game.aera:
@@ -293,6 +295,7 @@ func zeige_talente() -> void:
 	var aktualisieren := func():
 		titel.text = "%s Münzen  ·  %d von %d Skills gelernt  ·  Ziehen = verschieben, Mausrad = zoomen, Klick auf leuchtende Knoten = lernen" % [Data.zahl(Game.muenzen), Game.skills.size(), Data.skills().size() - 1]
 	aktualisieren.call()
+	v.add_child(Stil.knopf("Fundbuch aufschlagen  (%d von %d Entdeckungen)" % [Game.funde_anzahl(), Data.FUNDE.size()], zeige_fundbuch, 18))
 	var baum := Skillbaum.new()
 	baum.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	baum.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -372,6 +375,29 @@ func _schalter(titel: String, schluessel: String) -> Control:
 
 
 # --- Intro und Steuerung ------------------------------------------------------------
+## Die zweite Seite in Opas Notizbuch: alle Geheimnisse des Tals. Ungefundene zeigen nur eine Andeutung.
+func zeige_fundbuch() -> void:
+	_oeffnen("fundbuch")
+	var v := Stil.fenster(_wurzel, "Fundbuch", 920, 780, schliessen)
+	v.add_child(Stil.label("%d von %d Entdeckungen im Haselgrund. Opa hat zu jeder etwas aufgeschrieben." % [Game.funde_anzahl(), Data.FUNDE.size()], 18, Stil.LEISE, true))
+	var paar := _scrollbar("Fundbuch")
+	var sc: ScrollContainer = paar[0]
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.custom_minimum_size = Vector2(860, 560)
+	var liste: VBoxContainer = paar[1]
+	for f in Data.FUNDE:
+		var da := Game.hat_fund(f.id)
+		var p := PanelContainer.new()
+		p.add_theme_stylebox_override("panel", Stil.box(Color(0.2, 0.14, 0.09, 0.95) if da else Color(0.13, 0.1, 0.08, 0.9), Color(0.75, 0.58, 0.25) if da else Color(0.35, 0.28, 0.2), 8, 10))
+		var z := VBoxContainer.new()
+		z.add_child(Stil.label(str(f.name) if da else "? ? ?", 22, Stil.GOLD if da else Stil.LEISE))
+		z.add_child(Stil.label(("„%s“ – Opa" % f.text) if da else str(f.hinweis), 17, Stil.TEXT if da else Stil.LEISE, true))
+		p.add_child(z)
+		liste.add_child(p)
+	v.add_child(sc)
+	v.add_child(Stil.knopf("Zurück zum Notizbuch", zeige_talente, 18))
+
+
 ## Ein Zettel, Brief oder Bauplan zum Lesen.
 func zeige_zettel(titel: String, text: String) -> void:
 	_oeffnen("zettel")

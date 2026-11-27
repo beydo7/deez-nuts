@@ -105,7 +105,221 @@ func _tal() -> void:
 
 func _geheimnisse() -> void:
 	print("-- Geheimnisse")
-	await warte(0.05)
+	var gh: Geheimnisse = welt.geheimnisse
+	var s: Spieler = welt.spieler
+	var g: Gelaende = welt.gelaende
+	# Ausgangszustand merken, damit die folgenden Tests unverändert laufen
+	var extra_vorher: Dictionary = Game.extra.duplicate(true)
+	var gold_vorher := Game.gold
+	var muenzen_vorher := Game.muenzen
+	var zeit_vorher := Game.tageszeit
+	var regen_vorher := Game.letzter_regen
+	Game.extra.erase("funde")
+	pruefe(Data.FUNDE.size() == 12 and Game.funde_anzahl() == 0, "Fundbuch hat 12 Einträge, noch nichts gefunden")
+	for m in ["mondmaschine", "koenigseiche"]:
+		var mk: Node = welt.find_child(m, true, false)
+		pruefe(Modelle.plaetze.has(m) and mk != null and mk.get_child_count() > 0, "Modellplatz %s steht" % m)
+	# --- Mondlichtung: Staub fegen, Maschine, Mondnuss, Zahnbürste
+	var mo: Vector3 = WeltPlan.ORTE.mondlichtung
+	var mond := g.position(mo.x, mo.z)
+	pruefe(gh.staub_rest() == Geheimnisse.STAUB_ANZAHL and gh.staub_bei(mond), "Im Krater liegt Mondstaub")
+	s.global_position = g.position(mo.x, mo.z + 2.2) + Vector3(0, 0.3, 0)
+	await warte(0.6)
+	_zielen_auf(s, g.position(mo.x, mo.z + 0.9))
+	await warte(0.3)
+	pruefe(s.hinweis.contains("Mondstaub"), "Hinweis zeigt Mondstaub fegen (%s)" % s.hinweis)
+	s.set_meta("test_sammeln", true)
+	await warte(1.2)
+	s.remove_meta("test_sammeln")
+	pruefe(gh.staub_rest() < Geheimnisse.STAUB_ANZAHL, "Fegen mit dem Werkzeug entfernt Staub (%d übrig)" % gh.staub_rest())
+	pruefe(Game.beutel_menge() == 0, "Staub landet nicht im Beutel")
+	await warte(0.6)
+	pruefe(str(Game.extra.get("mondstaub", "")).length() == Geheimnisse.STAUB_ANZAHL, "Fortschritt steht im Spielstand")
+	var runden := 0
+	while gh.staub_rest() > 0 and runden < 3000:
+		runden += 1
+		gh.fegen(mond + Vector3(randf_range(-4.6, 4.6), 0, randf_range(-4.6, 4.6)), {"rate": 220.0, "radius": 3.4}, 0.1)
+	pruefe(gh.staub_rest() == 0 and int(Game.extra.get("mond", 0)) == 1, "Krater sauber, Maschine springt an")
+	pruefe(not gh.staub_bei(mond), "Kein Fegen mehr nötig")
+	await warte(2.9)
+	pruefe(gh.ia.mondnuss.collision_layer != 0, "Die Mondnuss liegt im Auswurf")
+	var m0 := Game.muenzen
+	gh.ia.mondnuss.aktion.call(s)
+	pruefe(Game.hat_fund("mondlichtung") and Game.sammler.has("zahnbuerste") and Game.muenzen > m0, "Mondnuss genommen: Fund, Münzen, Goldene Zahnbürste")
+	Game.waehle_sammler("zahnbuerste")
+	await warte(0.2)
+	pruefe(s.geraet.id == "zahnbuerste", "Zahnbürste hat ein eigenes Modell in der Hand")
+	m0 = Game.muenzen
+	Game.zahnbuerste_gesammelt(Data.MONDNUSS_JEDE)
+	pruefe(Game.muenzen >= m0 + Data.MONDNUSS_WERT, "Jede 50. Nuss mit der Zahnbürste ist eine Mondnuss")
+	Game.waehle_sammler("haende")
+	pruefe(not Data.sammler("zahnbuerste").is_empty() and Game.naechstes_kaufziel().get("name", "") != "Goldene Zahnbürste", "Zahnbürste ist kein Kaufziel")
+	# --- Nadel im Heuhaufen
+	Game.tageszeit = 12.0
+	pruefe(not gh.nadel_blitzt(), "Mittags blitzt die Nadel nicht")
+	Game.tageszeit = 18.0
+	pruefe(gh.nadel_blitzt(), "In der Abendsonne blitzt die Nadel")
+	pruefe(not welt.find_child("Nadelvitrine", true, false).visible, "Vitrine in der Küche ist noch leer")
+	gh.ia.nadel.aktion.call(s)
+	await warte(0.3)
+	pruefe(Game.hat_fund("nadel") and gh.applaus_anzahl() == 12, "Nadel gefunden, zwölf Eichhörnchen klatschen")
+	pruefe(welt.find_child("Nadelvitrine", true, false).visible, "Nadel liegt in der Vitrine")
+	# --- Eichhörnchen-König
+	Game.gold = 0
+	gh.ia.opfer0.aktion.call(s)
+	pruefe(int(Game.extra.get("opfer", 0)) == 0, "Ohne Goldene Nuss keine Opfergabe")
+	Game.gold = 3
+	for i in 3:
+		gh.ia["opfer%d" % i].aktion.call(s)
+	pruefe(Game.gold == 0 and int(Game.extra.get("opfer", 0)) == 7, "Drei Goldene Nüsse liegen auf den Stümpfen")
+	var koenig: Node3D = welt.find_child("Koenig", true, false)
+	Game.tageszeit = 12.0
+	await warte(0.7)
+	pruefe(not koenig.visible, "Tagsüber ist der Thron leer")
+	Game.tageszeit = 22.0
+	await warte(0.7)
+	pruefe(koenig.visible and gh.ia.koenig.collision_layer != 0, "Nachts sitzt der König auf dem Thron")
+	var summe := 0
+	for i in 400:
+		summe += Game.klau_menge(3)
+	pruefe(summe == 1200, "Vor der Audienz klauen Eichhörnchen voll")
+	gh.ia.koenig.aktion.call(s)
+	await warte(0.2)
+	pruefe(Game.hat_fund("koenig") and welt.menues.offen == "zettel", "Audienz: Freund der Krone")
+	welt.menues.schliessen()
+	s.gesperrt = false
+	summe = 0
+	for i in 400:
+		summe += Game.klau_menge(3)
+	pruefe(summe < 1000 and summe > 800, "Nach der Audienz klauen sie ein Viertel weniger (%d statt 1200)" % summe)
+	# --- Mini-Nussberg im Briefkasten
+	gh.ia.briefkasten.aktion.call(s)
+	await warte(0.2)
+	pruefe(Game.hat_fund("miniberg") and welt.menues.offen == "zettel", "Briefkasten: Post und Mini-Nussberg")
+	welt.menues.schliessen()
+	s.gesperrt = false
+	# --- Flaschenpost, O + F, Goldene Walnuss
+	gh.ia.flaschenpost.aktion.call(s)
+	await warte(0.2)
+	pruefe(Game.hat_fund("flaschenpost") and welt.menues.offen == "zettel", "Flaschenpost gelesen")
+	welt.menues.schliessen()
+	s.gesperrt = false
+	gh.ia.herz.aktion.call(s)
+	pruefe(Game.hat_fund("herz"), "Schnitzerei unter Omas Brücke gefunden")
+	var gold0 := Game.gold
+	gh.ia.goldwalnuss.aktion.call(s)
+	pruefe(Game.hat_fund("goldwalnuss") and Game.gold == gold0 + 10, "Goldene Walnuss: +10 Goldene Nüsse")
+	# --- Opas Keller
+	pruefe(gh.ia.falltuer.collision_layer == 0, "Falltür liegt unter dem Teppich")
+	gh.ia.teppich.aktion.call(s)
+	await warte(0.7)
+	pruefe(gh.ia.falltuer.collision_layer != 0 and int(Game.extra.get("teppich", 0)) == 1, "Teppich angehoben, Falltür frei")
+	gh.ia.falltuer.aktion.call(s)
+	await warte(0.8)
+	pruefe(s.global_position.x > 250.0 and s.is_on_floor() and s.global_position.y > -1.0, "Im Keller stehen (y %.2f)" % s.global_position.y)
+	pruefe(welt.find_child("Keller", true, false) != null, "Keller wurde beim Betreten gebaut")
+	gh.ia.keller_foto.aktion.call(s)
+	await warte(0.2)
+	pruefe(Game.hat_fund("keller") and welt.find_child("Kellerfoto", true, false).visible, "Altes Foto gefunden, hängt jetzt in der Küche")
+	welt.menues.schliessen()
+	s.gesperrt = false
+	gh.figur_nehmen("keller")
+	gh.ia.keller_leiter.aktion.call(s)
+	await warte(0.9)
+	pruefe(s.global_position.x < 10.0 and s.global_position.x > 3.0 and s.is_on_floor(), "Zurück in der Werkstatt")
+	pruefe(welt.find_child("Keller", true, false) == null, "Keller ist wieder abgebaut")
+	# --- Studio hinter dem Wasserfall
+	gh.ia.wasserfall.aktion.call(s)
+	await warte(0.8)
+	pruefe(s.global_position.x > 250.0 and s.is_on_floor(), "Im Studio hinter dem Wasserfall")
+	gh.ia.studio_tafel.aktion.call(s)
+	await warte(0.2)
+	pruefe(Game.hat_fund("studio") and welt.menues.offen == "zettel", "Tafel mit dem Team gelesen")
+	welt.menues.schliessen()
+	s.gesperrt = false
+	gh.ia.studio_ausgang.aktion.call(s)
+	await warte(0.8)
+	var becken: Vector3 = WeltPlan.BACH[WeltPlan.BACH_KANTE + 1]
+	pruefe(s.global_position.distance_to(becken) < 9.0 and s.global_position.y > -1.2, "Zurück am Wasserfall")
+	# --- Hexenring
+	var ring: Node3D = welt.find_child("Hexenring", true, false)
+	Game.tageszeit = 23.0
+	Game.letzter_regen = -99999.0
+	await warte(0.3)
+	pruefe(not ring.visible, "Ohne Regen kein Hexenring")
+	Game.letzter_regen = Game.spielzeit - 60.0
+	await warte(0.3)
+	pruefe(ring.visible, "Nachts nach Regen leuchtet der Hexenring")
+	var chance0 := Game.gold_chance()
+	s.global_position = ring.global_position + Vector3(0, 0.3, 0)
+	await warte(0.5)
+	pruefe(Game.hat_fund("hexenring") and absf(Game.gold_chance() - chance0 * 2.0) < 0.0001, "Im Ring: Fund und doppelte Goldchance")
+	Game.tageszeit = 12.0
+	await warte(0.3)
+	pruefe(not ring.visible, "Tagsüber ist der Ring weg")
+	# --- Sir Nussbert
+	Game.helfer = 1
+	welt._helfer_aufstellen()
+	var bert: SammelHelfer = gh.nussbert_jetzt()
+	s.global_position = Vector3(-1.15, 0.1, -9.5)
+	await warte(0.4)
+	pruefe(bert != null and bert.ist_nussbert(), "Sir Nussbert trägt Zylinder")
+	if bert:
+		var kleinster := 180.0
+		var ende := Time.get_ticks_msec() + 7000
+		while Time.get_ticks_msec() < ende:
+			_zielen_auf(s, bert.global_position + Vector3(0, 0.3, 0))
+			await get_tree().process_frame
+			kleinster = minf(kleinster, gh.nussbert_winkel)
+			if Game.hat_fund("nussbert"):
+				break
+		pruefe(Game.hat_fund("nussbert"), "Drei Sekunden hinschauen: Hutgruß (kleinster Winkel %.1f°)" % kleinster)
+		await warte(0.7)
+		pruefe(bert.find_child("*", true, false) != null, "Helfer lebt weiter")
+	pruefe(welt._helfer_knoten.size() == 1, "Ein Helfer für den Test")
+	await warte(0.6)
+	for h in welt._helfer_knoten:
+		h.queue_free()
+	welt._helfer_knoten.clear()
+	Game.helfer = 0
+	# --- Nussknacker-Figuren
+	var sweet0: float = Game.werkzeug_werte().sweet
+	pruefe(welt.find_child("Figur_kueche", true, false) != null and welt.find_child("Figur_hochsitz", true, false) != null, "Figuren stehen im Tal")
+	pruefe(gh.figuren_gefunden().size() == 1, "Kellerfigur ist schon eingesammelt")
+	var fia: Interaktiv = welt.find_child("Figur_brunnen", true, false).get_meta("ia")
+	fia.aktion.call(s)
+	pruefe(gh.figuren_gefunden().size() == 2, "Figur per [E] mitgenommen")
+	for id in Geheimnisse.FIGUREN:
+		gh.figur_nehmen(id)
+	await warte(0.3)
+	pruefe(Game.hat_fund("figuren") and gh.figuren_gefunden().size() == 12, "Alle zwölf Figuren gefunden")
+	pruefe(absf(Game.werkzeug_werte().sweet - sweet0 - 0.03) < 0.0001, "Sweet Spot dauerhaft +3 %")
+	pruefe(gh.parade_laeuft() and welt.find_child("GoldenerNussknacker", true, false).visible, "Parade läuft, goldener Nussknacker steht in der Küche")
+	# --- Fundbuch und Spielstand
+	pruefe(Game.funde_anzahl() == 12, "Fundbuch vollständig (%d von 12)" % Game.funde_anzahl())
+	welt.menues.zeige_talente()
+	await warte(0.2)
+	welt.menues.zeige_fundbuch()
+	await warte(0.2)
+	pruefe(welt.menues.offen == "fundbuch", "Fundbuch lässt sich aufschlagen")
+	welt.menues.schliessen()
+	s.gesperrt = false
+	Game.speichern()
+	Game.extra = {}
+	Game.laden()
+	pruefe(Game.funde_anzahl() == 12 and int(Game.extra.get("mond", 0)) == 2 and int(Game.extra.get("opfer", 0)) == 7 and gh.figuren_gefunden().size() == 12, "Geheimnisse überstehen Speichern und Laden")
+	# --- Aufräumen für die folgenden Tests
+	Game.extra = extra_vorher
+	Game.gold = gold_vorher
+	Game.muenzen = muenzen_vorher
+	Game.tageszeit = zeit_vorher
+	Game.letzter_regen = regen_vorher
+	Game.sammler.erase("zahnbuerste")
+	Game.waehle_sammler("haende")
+	Game.geld_geaendert.emit()
+	s.gesperrt = false
+	s.global_position = Vector3(0.15, 0.05, -1.0)
+	await warte(0.3)
 
 
 func _anwesen() -> void:

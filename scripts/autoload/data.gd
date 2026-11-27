@@ -69,7 +69,12 @@ const SAMMLER := [
 		"text": "Ein dröhnender Rüssel. Die Nüsse kommen in Wellen."},
 	{"id": "xxl", "name": "Nuss-Sauger XXL", "rate": 220.0, "radius": 3.4, "reichweite": 9.0, "preis": 400000, "aera": 4,
 		"text": "Der Berg zittert, wenn du ihn einschaltest."},
+	# Geheimes Werkzeug: gibt es nicht zu kaufen, nur an der Mondlichtung zu finden
+	{"id": "zahnbuerste", "name": "Goldene Zahnbürste", "rate": 1.0, "radius": 0.3, "reichweite": 2.6, "preis": 0, "aera": 1, "geheim": true,
+		"text": "Lächerlich langsam. Aber jede 50. Nuss ist eine Mondnuss (50 Münzen)."},
 ]
+const MONDNUSS_JEDE := 50
+const MONDNUSS_WERT := 50.0
 
 # kap = wie viele Nüsse man tragen kann, tempo = Laufgeschwindigkeit (Faktor)
 const BEUTEL := [
@@ -140,6 +145,38 @@ const MASCHINEN := {
 	"lagerhalle": {"name": "Lagerhalle", "preis": 20000, "aera": 2, "stufen": 10, "stufenpreis": 15000,
 		"text": "Zehnmal so viel Platz im Lager. Jede Stufe +50 %."},
 }
+
+# --- Fundbuch: die Geheimnisse des Haselgrunds ---------------------------------------
+# hinweis = Andeutung, solange noch nicht gefunden; text = Opas Kommentar danach
+const FUNDE := [
+	{"id": "mondlichtung", "name": "Die Mondlichtung", "hinweis": "Hinter dem Berg liegt grauer Staub, den keiner bestellt hat.",
+		"text": "Ich hab's immer gesagt: Manche Nüsse kommen vom Mond. Jetzt hast du den Beweis und eine Zahnbürste."},
+	{"id": "nadel", "name": "Die Nadel im Heuhaufen", "hinweis": "Nadel verloren. Irgendwo zwischen Heu und Abendrot.",
+		"text": "Elf Jahre hab ich die gesucht. Elf! Und du läufst einfach hin. Die Eichhörnchen haben zu Recht geklatscht."},
+	{"id": "koenig", "name": "Der Eichhörnchen-König", "hinweis": "Kleine Füße, immer paarweise, und Bäume mit Krone.",
+		"text": "Seine Majestät nimmt Gold, aber keine Befehle. Unser Pakt gilt jetzt auch für dich."},
+	{"id": "miniberg", "name": "Der Mini-Nussberg", "hinweis": "Die Post bringt nicht nur Briefe.",
+		"text": "Maßstab 1 zu 150. Der Briefträger fand das nicht lustig. Ich schon."},
+	{"id": "flaschenpost", "name": "Opas Flaschenpost", "hinweis": "Im Schilf treibt etwas, das kein Fisch ist.",
+		"text": "Die sollte eigentlich bis zum Meer. Sie ist zwölf Meter weit gekommen."},
+	{"id": "herz", "name": "O + F", "hinweis": "Manches sieht man nur, wenn man nasse Füße riskiert.",
+		"text": "Frieda wollte die Brücke, ich wollte den Berg. Wir haben beides bekommen."},
+	{"id": "goldwalnuss", "name": "Die Goldene Walnuss", "hinweis": "Ein Vogel sammelt auch. Nur weiter oben.",
+		"text": "Die Elster hat sie mir 1989 geklaut. Ich hab den Hochsitz nur gebaut, um sie zu beobachten."},
+	{"id": "keller", "name": "Opas Keller", "hinweis": "Unter manchem Teppich liegt mehr als Staub.",
+		"text": "Von jedem Jahr ein Glas. 1974 schmeckt übrigens furchtbar."},
+	{"id": "nussbert", "name": "Sir Nussbert", "hinweis": "Einer von dreihundert trägt Hut.",
+		"text": "Er kam eines Tages mit Zylinder und Monokel. Ich habe nie gefragt, woher."},
+	{"id": "hexenring", "name": "Der Hexenring", "hinweis": "Nach dem Regen, wenn es dunkel ist, leuchtet der Wald an einer Stelle.",
+		"text": "Nicht reintreten, hat Frieda gesagt. Ich bin jedes Mal reingetreten."},
+	{"id": "studio", "name": "Hinter dem Wasserfall", "hinweis": "Wasser fällt nicht immer vor einer Wand.",
+		"text": "Hier sitzen die, die sich das alles ausgedacht haben. Sei nett zu ihnen."},
+	{"id": "figuren", "name": "Opas Nussknacker-Figuren", "hinweis": "Zwölf kleine Kerle aus Holz stehen im Tal herum.",
+		"text": "Jeden Winter eine geschnitzt. Der Goldene gehört dir, du hast ihn dir verdient."},
+]
+
+# Wer Deez Nuts! gebaut hat. Das Team trägt hier seine Namen ein; sie erscheinen im Raum hinter dem Wasserfall.
+const TEAM := ["beydo7"]
 
 # --- Geführte Ziele am Anfang ----------------------------------------------------
 # Danach zeigt das Spiel immer das nächste bezahlbare Ziel aus dem Katalog.
@@ -235,6 +272,13 @@ func skills() -> Dictionary:
 			vorher = id
 	_skills_cache = alle
 	return alle
+
+
+func fund_daten(id: String) -> Dictionary:
+	for f in FUNDE:
+		if f.id == id:
+			return f
+	return {}
 
 
 func sammler(id: String) -> Dictionary:

@@ -829,3 +829,154 @@ static func sperre(k: Node3D) -> void:
 
 static func _moos_fleck() -> Mesh:
 	return Bau.kugel_mesh(1.0, false, 10)
+
+
+# --- Etappe 4: Geheimnisse -----------------------------------------------------
+## Opas Mondsiebmaschine, 2,5 x 1,5 x 2,5 m, Auswurf an der Front (+Z).
+## Bewegliche Teile: Trichter, Rad, Klappe.
+static func mondmaschine(k: Node3D) -> void:
+	var rost := Look.putz(Color(0.48, 0.27, 0.15), Color(0.32, 0.18, 0.11), 55.0, 0.0, 0.9)
+	var blech := Look.metall(Color(0.42, 0.44, 0.46), 0.55)
+	var gruen := Look.lackiert(Color(0.3, 0.42, 0.36), 0.2)
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			Bau.teil(k, Bau.box_mesh(Vector3(0.12, 0.6, 0.12)), blech, Vector3(sx * 1.05, 0.3, sz * 0.55), Vector3(sz * 6.0, 0, sx * -6.0))
+	Bau.teil(k, Bau.box_mesh(Vector3(2.3, 1.0, 1.3)), gruen, Vector3(0, 1.05, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(2.34, 0.12, 1.34)), rost, Vector3(0, 0.6, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(2.34, 0.1, 1.34)), rost, Vector3(0, 1.56, 0))
+	for i in 7:
+		Bau.teil(k, Bau.kugel_mesh(0.03, false, 6), blech, Vector3(-0.95 + i * 0.32, 1.45, 0.66))
+	# Trichter oben
+	var trichter := Node3D.new()
+	trichter.name = "Trichter"
+	trichter.position = Vector3(-0.5, 1.6, 0)
+	k.add_child(trichter)
+	var tm := CylinderMesh.new()
+	tm.top_radius = 0.62
+	tm.bottom_radius = 0.2
+	tm.height = 0.75
+	tm.radial_segments = 12
+	Bau.teil(trichter, tm, rost, Vector3(0, 0.38, 0))
+	Bau.teil(trichter, Bau.zylinder_mesh(0.56, 0.56, 0.02, 12), Bau.mat(Color(0.08, 0.07, 0.07)), Vector3(0, 0.76, 0))
+	# Siebtrommel und Schornstein
+	Bau.teil(k, Bau.zylinder_mesh(0.42, 0.42, 0.9, 14), blech, Vector3(0.6, 1.85, 0), Vector3(0, 0, 90))
+	Bau.teil(k, Bau.zylinder_mesh(0.09, 0.09, 0.9, 8), rost, Vector3(0.95, 2.05, -0.4))
+	Bau.teil(k, Bau.zylinder_mesh(0.13, 0.09, 0.14, 8), rost, Vector3(0.95, 2.5, -0.4))
+	# Schwungrad an der Seite
+	var rad := Node3D.new()
+	rad.name = "Rad"
+	rad.position = Vector3(1.24, 1.1, 0)
+	k.add_child(rad)
+	var reif := TorusMesh.new()
+	reif.inner_radius = 0.5
+	reif.outer_radius = 0.6
+	Bau.teil(rad, reif, rost, Vector3.ZERO, Vector3(0, 0, 90))
+	for j in 3:
+		Bau.teil(rad, Bau.box_mesh(Vector3(0.05, 1.05, 0.07)), blech, Vector3.ZERO, Vector3(j * 60.0, 0, 0))
+	# Auswurf mit Klappe und Schale
+	Bau.teil(k, Bau.box_mesh(Vector3(0.5, 0.36, 0.1)), Bau.mat(Color(0.06, 0.05, 0.05)), Vector3(0, 0.95, 0.63))
+	var klappe := Node3D.new()
+	klappe.name = "Klappe"
+	klappe.position = Vector3(0, 1.14, 0.69)
+	k.add_child(klappe)
+	Bau.teil(klappe, Bau.box_mesh(Vector3(0.54, 0.4, 0.03)), blech, Vector3(0, -0.2, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.6, 0.04, 0.45)), blech, Vector3(0, 0.72, 0.9))
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.03, 0.1, 0.45)), blech, Vector3(s * 0.3, 0.77, 0.9))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.6, 0.1, 0.03)), blech, Vector3(0, 0.77, 1.12))
+	# Amtsschild auf zwei Pfosten neben der Maschine
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.07, 1.5, 0.07)), _dunkel(), Vector3(-2.3 + s * 0.55, 0.75, 0.5), Vector3(0, 0, s * 2.0))
+	Bau.holzschild(k, "Mondstaubamt Haselgrund", Vector3(-2.3, 1.3, 0.55), Vector2(1.5, 0.3), Vector3(0, 0, -2), 66)
+	Bau.holzschild(k, "– Außenstelle –", Vector3(-2.3, 0.98, 0.55), Vector2(1.1, 0.22), Vector3(0, 0, 1.5), 58)
+	_koll(k, Vector3(2.5, 2.2, 1.4), Vector3(0, 1.1, 0))
+
+
+## Die Königseiche: riesiger hohler Stamm (Öffnung an der Front, +Z), Krone, Mini-Häuser, winziger Thron.
+## Etwa 8 x 8 x 14 m.
+static func koenigseiche(k: Node3D) -> void:
+	var rinde := Look.holz([Color(0.46, 0.34, 0.24), Color(0.28, 0.2, 0.13)], 16.0, 0.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1701
+	var radius := 2.0
+	var n := 14
+	for i in n:
+		var a := (i + 0.5) * TAU / n
+		var pos := Vector3(sin(a) * radius, 0, cos(a) * radius)
+		if i == 0 or i == n - 1:
+			continue   # die Öffnung
+		var h := 7.0 + rng.randf_range(-0.3, 0.5)
+		Bau.teil(k, Bau.box_mesh(Vector3(1.02, h, 0.5 + rng.randf_range(0.0, 0.18))), rinde, pos + Vector3(0, h * 0.5, 0), Vector3(rng.randf_range(-2, 2), rad_to_deg(a), 0))
+		_koll(k, Vector3(1.0, 7.0, 0.5), pos + Vector3(0, 3.5, 0), Vector3(0, rad_to_deg(a), 0))
+		# Wurzelansatz
+		Bau.teil(k, Bau.box_mesh(Vector3(0.7, 1.6, 0.9)), rinde, pos * 1.22 + Vector3(0, 0.45, 0), Vector3(-28.0, rad_to_deg(a), 0))
+	# Sturz über der Öffnung und Wülste links und rechts
+	Bau.teil(k, Bau.box_mesh(Vector3(2.0, 4.6, 0.55)), rinde, Vector3(0, 4.9, radius - 0.02))
+	Bau.teil(k, Bau.kugel_mesh(1.0, false, 10), rinde, Vector3(0, 2.6, radius), Vector3.ZERO, Vector3(1.05, 0.35, 0.34))
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.6, 1.3, 0.8)), rinde, Vector3(s * 1.25, 0.4, radius + 0.45), Vector3(-30, s * 25.0, 0))
+	# Innen: dunkler Boden und dunkle Decke
+	Bau.teil(k, Bau.zylinder_mesh(1.9, 1.9, 0.02, 14), Look.putz(Color(0.2, 0.15, 0.1), Color(0.13, 0.1, 0.07), 40.0), Vector3(0, 0.02, 0))
+	Bau.teil(k, Bau.zylinder_mesh(2.1, 2.1, 0.3, 14), rinde, Vector3(0, 7.1, 0))
+	# Äste und Krone
+	var laub_a := Look.laub(Color(0.86, 0.5, 0.14), Color(0.6, 0.3, 0.08))
+	var laub_b := Look.laub(Color(0.92, 0.7, 0.2), Color(0.62, 0.44, 0.12))
+	for i in 5:
+		var a := i * TAU / 5.0 + 0.4
+		var richtung := Vector3(sin(a), 0, cos(a))
+		Bau.teil(k, Bau.zylinder_mesh(0.22, 0.42, 4.2, 8), rinde, richtung * 2.6 + Vector3(0, 7.9, 0), Vector3(-55.0, rad_to_deg(a), 0))
+		Bau.teil(k, Bau.kugel_mesh(1.0, false, 12), laub_a if i % 2 == 0 else laub_b, richtung * 4.3 + Vector3(0, 9.6 + (i % 2) * 0.8, 0), Vector3.ZERO, Vector3.ONE * rng.randf_range(2.6, 3.3))
+	Bau.teil(k, Bau.kugel_mesh(1.0, false, 14), laub_b, Vector3(0, 11.2, 0), Vector3.ZERO, Vector3(4.2, 3.0, 4.2))
+	Bau.teil(k, Bau.kugel_mesh(1.0, false, 12), laub_a, Vector3(1.0, 9.2, -0.6), Vector3.ZERO, Vector3(3.2, 2.2, 3.2))
+	# Mini-Häuser der Eichhörnchen außen am Stamm
+	var huette := Look.holz(Look.KIEFER, 10.0, 0.0)
+	for hp in [[Vector3(-1.9, 2.9, 1.5), -50.0], [Vector3(2.3, 3.8, 0.4), 80.0], [Vector3(-2.2, 4.6, -0.9), -110.0], [Vector3(1.4, 2.4, 1.9), 35.0]]:
+		var haus := Node3D.new()
+		haus.position = hp[0]
+		haus.rotation_degrees.y = hp[1]
+		k.add_child(haus)
+		Bau.teil(haus, Bau.box_mesh(Vector3(0.5, 0.04, 0.4)), huette, Vector3(0, 0, 0.25))
+		Bau.teil(haus, Bau.box_mesh(Vector3(0.34, 0.3, 0.3)), huette, Vector3(0, 0.17, 0.25))
+		for s in [-1.0, 1.0]:
+			Bau.teil(haus, Bau.box_mesh(Vector3(0.27, 0.03, 0.38)), _ziegel(), Vector3(s * 0.095, 0.39, 0.25), Vector3(0, 0, s * -40.0))
+		Bau.teil(haus, Bau.zylinder_mesh(0.055, 0.055, 0.01, 10), Bau.mat(Color(0.05, 0.04, 0.03)), Vector3(0, 0.17, 0.403), Vector3(90, 0, 0))
+		Bau.teil(haus, Bau.kugel_mesh(0.012, false, 6), Look.leuchten(Color(1.0, 0.8, 0.4), 1.5), Vector3(0.12, 0.27, 0.41))
+	# Der winzige Thron auf einem Wurzelsockel
+	stumpf(k, Vector3(0, 0, -1.15), 0.34, 0.55)
+	var thron := Node3D.new()
+	thron.name = "Thron"
+	thron.position = Vector3(0, 0.56, -1.2)
+	k.add_child(thron)
+	var gold := Look.metall(Color(0.95, 0.75, 0.25), 0.3)
+	var samt := Look.stoff(Color(0.55, 0.1, 0.12))
+	Bau.teil(thron, Bau.box_mesh(Vector3(0.24, 0.05, 0.22)), samt, Vector3(0, 0.07, 0.02))
+	Bau.teil(thron, Bau.box_mesh(Vector3(0.26, 0.42, 0.04)), gold, Vector3(0, 0.25, -0.1))
+	Bau.teil(thron, Bau.box_mesh(Vector3(0.2, 0.3, 0.02)), samt, Vector3(0, 0.25, -0.078))
+	for s in [-1.0, 1.0]:
+		Bau.teil(thron, Bau.box_mesh(Vector3(0.035, 0.14, 0.22)), gold, Vector3(s * 0.125, 0.12, 0.02))
+		Bau.teil(thron, Bau.kugel_mesh(0.025, false, 8), gold, Vector3(s * 0.11, 0.48, -0.1))
+	Bau.teil(thron, Bau.kugel_mesh(0.035, false, 8), Look.nuss("hasel"), Vector3(0, 0.5, -0.1))
+
+
+## Opas geschnitzte Nussknacker-Figur, 30 cm hoch.
+static func nussknacker_figur(k: Node3D) -> void:
+	var rot := Look.lackiert(Color(0.72, 0.14, 0.12), 0.45)
+	var blau := Look.lackiert(Color(0.15, 0.22, 0.45), 0.45)
+	var haut := Look.lackiert(Color(0.93, 0.76, 0.62), 0.3)
+	var schwarz := Look.lackiert(Color(0.08, 0.07, 0.07), 0.5)
+	var gold := Look.metall(Color(0.95, 0.75, 0.25), 0.3)
+	Bau.teil(k, Bau.box_mesh(Vector3(0.11, 0.015, 0.09)), schwarz, Vector3(0, 0.008, 0))
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.box_mesh(Vector3(0.035, 0.09, 0.04)), blau, Vector3(s * 0.024, 0.06, 0))
+		Bau.teil(k, Bau.box_mesh(Vector3(0.025, 0.085, 0.03)), rot, Vector3(s * 0.056, 0.15, 0))
+		Bau.teil(k, Bau.kugel_mesh(0.012, false, 6), gold, Vector3(s * 0.056, 0.2, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.085, 0.1, 0.055)), rot, Vector3(0, 0.155, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.09, 0.012, 0.06)), schwarz, Vector3(0, 0.11, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.07, 0.065, 0.06)), haut, Vector3(0, 0.24, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.05, 0.02, 0.012)), Bau.mat(Color(0.95, 0.95, 0.92)), Vector3(0, 0.222, 0.032))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.076, 0.012, 0.066)), schwarz, Vector3(0, 0.275, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.06, 0.05, 0.05)), schwarz, Vector3(0, 0.305, 0))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.062, 0.008, 0.052)), gold, Vector3(0, 0.29, 0))
+	for s in [-1.0, 1.0]:
+		Bau.teil(k, Bau.kugel_mesh(0.006, false, 5), schwarz, Vector3(s * 0.017, 0.252, 0.031))
+	Bau.teil(k, Bau.box_mesh(Vector3(0.012, 0.11, 0.012)), haut, Vector3(0, 0.2, -0.04), Vector3(25, 0, 0))

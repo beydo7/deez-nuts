@@ -118,6 +118,7 @@ func _process(delta: float) -> void:
 				var menge := 3
 				if Game.hat_talent("nussfluesterer"):
 					menge = 1
+				menge = Game.klau_menge(menge)
 				beute = ziel_behaelter.nimm_haelften(menge)
 				if beute > 0:
 					Game.statistik.gestohlen += beute
