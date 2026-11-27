@@ -884,7 +884,9 @@ func _siedlung(hof: Node3D) -> void:
 			Sfx.spiele("knarzen", -6.0, 0.8)
 			var tw := create_tween()
 			tw.tween_property(brett, "rotation_degrees:x", 62.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			bi.queue_free()
+			# erst etwas später entfernen, der Spieler zielt in diesem Moment noch darauf
+			bi.collision_layer = 0
+			get_tree().create_timer(0.3).timeout.connect(bi.queue_free)
 	Modelle.platz(hof, "holzwagen_kaputt", g.position(-45.0, 15.6), 65.0, Ersatz.holzwagen)
 	Modelle.platz(hof, "wegweiser", g.position(-35.5, 15.8), 0.0, func(k: Node3D):
 		Ersatz.wegweiser(k, [["Alt-Haselgrund 0,3 km", 200.0], ["Stadt 14 km", 20.0], ["Mond 384.400 km", 95.0]]))
