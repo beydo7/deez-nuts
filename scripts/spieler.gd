@@ -702,13 +702,24 @@ func blickt_auf_station() -> Knackstation:
 	return _station_von(ziel)
 
 
-## Schrittgeräusch je nach Untergrund: Dielen in der Hütte, Gras im Hof, raschelnde Nüsse am Berg.
+## Schrittgeräusch je nach Untergrund: Dielen in der Hütte, Holz auf Brücke, Veranda und Steg,
+## raschelnde Nüsse am Berg, Kies auf dem Weg, Laub im Wald, sonst Gras.
 func _schritt_geraeusch() -> void:
 	var p := global_position
-	if p.z > -3.3 and absf(p.x) < 4.5:
+	var gel: Gelaende = welt.get("gelaende") if welt else null
+	var boden := gel.hoehe_bei(p.x, p.z) if gel else 0.0
+	if p.x > -3.1 and p.x < 10.1 and p.z > -3.1 and p.z < 3.1 and p.y < 3.2:
 		Sfx.variante("footstep_wood", -14.0, 1.0, 0.06)
 	elif welt and "berg" in welt and welt.berg and welt.berg.hoehe_bei(p.x, p.z) > 0.25:
 		Sfx.variante("footstep_grass", -12.0, 0.8, 0.08)
 		Sfx.spiele("knistern", -26.0, 1.4, 0.2)
+	elif p.y > boden + 0.14:
+		Sfx.variante("footstep_wood", -12.0, 0.85, 0.08)
+	elif gel and gel.weg_bei(p.x, p.z) > 0.5:
+		Sfx.variante("footstep_grass", -15.0, 0.72, 0.06)
+		Sfx.spiele("knirschen", -31.0, 1.7, 0.25)
+	elif WeltPlan.tal_r(p.x, p.z) > 0.95:
+		Sfx.variante("footstep_grass", -15.0, 0.9, 0.08)
+		Sfx.spiele("knistern", -29.0, 1.1, 0.25)
 	else:
 		Sfx.variante("footstep_grass", -15.0, 1.0, 0.06)

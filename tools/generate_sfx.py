@@ -573,6 +573,103 @@ def wasserfall():
     return aus[: n - ein]
 
 
+def _schleife(aus, sr, ein_s=0.5):
+    """Blendet Ende und Anfang ineinander, damit die Schleife nicht knackt."""
+    ein = int(sr * ein_s)
+    aus[:ein] = aus[:ein] * np.linspace(0, 1, ein) + aus[-ein:] * np.linspace(1, 0, ein)
+    return aus[: len(aus) - ein]
+
+
+def regen():
+    """Leichter Regen, 10 s Schleife (eigener Zufall wie bei bach())."""
+    rng = np.random.default_rng(41)
+    sr = 22050
+    n = int(sr * 10.5)
+    r = rng.uniform(-1, 1, n)
+    aus = hochpass(r, 2200, sr=sr) * 0.22 + bandpass(r, 5200, q=0.7, sr=sr) * 0.3
+    aus *= 1 + 0.12 * np.sin(2 * np.pi * np.arange(n) / sr / 2.3)
+    for _ in range(900):
+        p = int(rng.uniform(0, n - 400))
+        dauer = int(sr * rng.uniform(0.004, 0.012))
+        tropfen = rng.uniform(-1, 1, dauer) * np.exp(-np.arange(dauer) / (dauer * 0.3))
+        aus[p:p + dauer] += tropfen * rng.uniform(0.05, 0.22)
+    return _schleife(tiefpass(aus, 7000, sr=sr), sr)
+
+
+def grillen():
+    """Zwei Grillen am Abend, 8 s Schleife."""
+    rng = np.random.default_rng(42)
+    sr = 22050
+    n = int(sr * 8.5)
+    x = np.arange(n) / sr
+    aus = np.zeros(n)
+    for f, takt, puls, laut in [(4300.0, 0.62, 34.0, 0.5), (4850.0, 0.81, 29.0, 0.32)]:
+        traeger = np.sin(2 * np.pi * f * x + 0.4 * np.sin(2 * np.pi * 7 * x))
+        zirp = (np.sin(2 * np.pi * puls * x) > 0.1).astype(float)
+        phase = (x + rng.uniform(0, takt)) % takt
+        strophe = ((phase < takt * 0.42)).astype(float)
+        huelle_k = tiefpass(zirp * strophe, 220, sr=sr)
+        aus += traeger * huelle_k * laut
+    aus += tiefpass(rng.uniform(-1, 1, n), 500, sr=sr) * 0.04
+    return _schleife(aus, sr)
+
+
+def kauz():
+    """Ruf eines Waldkauzes: hu ... huuuu."""
+    rng = np.random.default_rng(43)
+    sr = 22050
+    n = int(sr * 2.2)
+    aus = np.zeros(n)
+    for start, dauer, f0, f1 in [(0.05, 0.28, 400.0, 385.0), (0.62, 1.25, 410.0, 350.0)]:
+        m = int(sr * dauer)
+        x = np.arange(m) / sr
+        f = np.linspace(f0, f1, m) * (1 + 0.012 * np.sin(2 * np.pi * 9 * x))
+        ton_k = np.sin(2 * np.pi * np.cumsum(f) / sr) + 0.25 * np.sin(4 * np.pi * np.cumsum(f) / sr)
+        hk = np.sin(np.pi * np.clip(x / dauer, 0, 1)) ** 0.7
+        p = int(sr * start)
+        aus[p:p + m] += ton_k * hk
+        aus[p:p + m] += bandpass(rng.uniform(-1, 1, m), 900, q=1.0, sr=sr) * hk * 0.06
+    return tiefpass(aus, 1800, sr=sr)
+
+
+def werkstatt():
+    """Klangzone Werkstatt: leises Brummen und eine tickende Uhr, 8 s Schleife."""
+    rng = np.random.default_rng(44)
+    sr = 22050
+    n = int(sr * 8.0)
+    x = np.arange(n) / sr
+    aus = 0.16 * np.sin(2 * np.pi * 50 * x) + 0.07 * np.sin(2 * np.pi * 100 * x + 0.3) + 0.03 * np.sin(2 * np.pi * 150 * x)
+    aus *= 1 + 0.08 * np.sin(2 * np.pi * x / 4.0)
+    aus += tiefpass(rng.uniform(-1, 1, n), 300, sr=sr) * 0.05
+    for i in range(16):
+        p = int(sr * i * 0.5)
+        m = int(sr * 0.03)
+        klack = rng.uniform(-1, 1, m) * np.exp(-np.arange(m) / (m * 0.18))
+        klack = bandpass(klack, 2600 if i % 2 == 0 else 1900, q=3.0, sr=sr)
+        aus[p:p + m] += klack * (0.55 if i % 2 == 0 else 0.4)
+    return aus
+
+
+def gack():
+    """Ein Huhn: bok, bok, bo-gaak."""
+    rng = np.random.default_rng(45)
+    sr = 22050
+    n = int(sr * 0.95)
+    aus = np.zeros(n)
+    for start, dauer, f0, f1, laut in [(0.02, 0.07, 620, 520, 0.7), (0.2, 0.07, 640, 530, 0.7), (0.4, 0.09, 600, 560, 0.8), (0.52, 0.3, 700, 980, 1.0)]:
+        m = int(sr * dauer)
+        x = np.arange(m) / sr
+        f = np.linspace(f0, f1, m)
+        ph = np.cumsum(f) / sr
+        roh = 2 * (ph % 1.0) - 1.0
+        hk = np.sin(np.pi * np.clip(x / dauer, 0, 1)) ** 0.6
+        k = bandpass(roh, 1500, q=2.0, sr=sr) + 0.5 * bandpass(roh, 2800, q=3.0, sr=sr)
+        p = int(sr * start)
+        aus[p:p + m] += k * hk * laut
+    aus += rng.uniform(-1, 1, n) * 0.0
+    return aus
+
+
 def main():
     os.makedirs(ZIEL, exist_ok=True)
     sounds = {
@@ -620,7 +717,12 @@ def main():
     speichern("atmo", atmo(), 0.7, 22050)
     speichern("bach", bach(), 0.7, 22050)
     speichern("wasserfall", wasserfall(), 0.8, 22050)
-    print(f"{len(sounds) + 4} Sounds erzeugt in {os.path.abspath(ZIEL)}")
+    speichern("regen", regen(), 0.7, 22050)
+    speichern("grillen", grillen(), 0.6, 22050)
+    speichern("kauz", kauz(), 0.7, 22050)
+    speichern("werkstatt", werkstatt(), 0.6, 22050)
+    speichern("gack", gack(), 0.8, 22050)
+    print(f"{len(sounds) + 9} Sounds erzeugt in {os.path.abspath(ZIEL)}")
 
 
 if __name__ == "__main__":

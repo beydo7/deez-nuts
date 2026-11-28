@@ -322,6 +322,7 @@ func zeige_pause() -> void:
 		Sfx.musik_lautstaerke(x)))
 	v.add_child(_schalter("Hilfsring um die Nuss zeigen  [H]", "hilfsring"))
 	v.add_child(_schalter("Tippen statt Halten (Klick = zudrücken, Klick = loslassen)", "tippen"))
+	v.add_child(_schalter("Zeit anhalten (immer dieselbe Tageszeit)", "zeit_fest"))
 	v.add_child(Stil.knopf("Steuerung anzeigen", zeige_intro, 20))
 	v.add_child(Stil.knopf("Speichern", func():
 		Game.speichern()

@@ -166,7 +166,72 @@ func _anwesen() -> void:
 
 func _leben() -> void:
 	print("-- Leben: Tag-Nacht, Wetter, Tiere")
-	await warte(0.05)
+	var h: Himmel = welt.himmel
+	var t: Tierwelt = welt.tierwelt
+	pruefe(h != null and t != null, "Himmel und Tierwelt sind da")
+	# Uhr umstellen wirkt sofort
+	h.setze_wetter("klar", true)
+	h.setze_zeit(13.0)
+	var tag_hell := h.helligkeit()
+	var tag_sonne: Vector3 = -welt.sonne.global_transform.basis.z
+	pruefe(absf(Game.tageszeit - 13.0) < 0.01 and not Game.ist_nacht(), "Uhr auf 13 Uhr gestellt")
+	pruefe(tag_sonne.y < -0.7, "Mittags steht die Sonne hoch")
+	pruefe(h.gestirn_richtung(13.0).z < -0.2, "Mittagssonne steht im Norden hinter dem Berg")
+	await warte(0.3)
+	pruefe(t.voegel.visible and t.falter.visible and not t.gluehwuermchen.visible, "Am Tag: Vögel und Falter, keine Glühwürmchen")
+	pruefe(t.huehner_wach() == Tierwelt.HUEHNER, "Am Tag sind die Hühner draußen")
+	h.setze_zeit(18.2)
+	pruefe(Game.ist_abend() and welt.sonne.light_color.g < 0.75, "Abendsonne ist orange")
+	pruefe(h.gestirn_richtung(18.2).x < -0.5, "Abends steht die Sonne im Westen")
+	h.setze_zeit(23.5)
+	var nacht_hell := h.helligkeit()
+	pruefe(Game.ist_nacht() and h.nacht > 0.95, "Nacht um 23:30")
+	pruefe(nacht_hell < tag_hell * 0.6, "Nacht ist dunkler als der Tag (%.2f zu %.2f)" % [nacht_hell, tag_hell])
+	pruefe(welt.sonne.light_energy > 0.3 and welt.umwelt.ambient_light_energy > 0.4, "Nacht ist nicht schwarz (Mondlicht %.2f)" % welt.sonne.light_energy)
+	pruefe(welt.sonne.light_color.b > welt.sonne.light_color.r, "Mondlicht ist blau")
+	var lampe: Node = welt.find_child("Laterne", true, false)
+	pruefe(lampe != null and (lampe.get_child(lampe.get_child_count() - 1) as OmniLight3D).light_energy > 0.8, "Laternen brennen nachts")
+	await warte(0.3)
+	pruefe(not t.voegel.visible and t.gluehwuermchen.visible and t.gluehwuermchen.get_child_count() >= 5, "Nachts: Glühwürmchen am Bach (%d Stellen), keine Vögel" % t.gluehwuermchen.get_child_count())
+	# Hühner gehen in den Stall
+	await warte(4.5)
+	pruefe(t.huehner_wach() == 0, "Nachts sind die Hühner im Stall")
+	# Die Zeit läuft von selbst (im Selbsttest nur mit Meta)
+	h.setze_zeit(8.0)
+	h.set_meta("zeit_laeuft", true)
+	await warte(1.0)
+	h.remove_meta("zeit_laeuft")
+	pruefe(Game.tageszeit > 8.005 and Game.tageszeit < 8.05, "Zeit läuft (%.3f)" % Game.tageszeit)
+	Game.einstellungen.zeit_fest = true
+	h.set_meta("zeit_laeuft", true)
+	var vorher := Game.tageszeit
+	await warte(0.4)
+	h.remove_meta("zeit_laeuft")
+	Game.einstellungen.zeit_fest = false
+	pruefe(is_equal_approx(Game.tageszeit, vorher), "Einstellung „Zeit anhalten“ hält die Uhr an")
+	# Wetter
+	var regen_vorher := Game.letzter_regen
+	h.setze_wetter("regen", true)
+	await warte(0.4)
+	pruefe(Game.wetter == "regen" and Game.letzter_regen > regen_vorher and absf(Game.letzter_regen - Game.spielzeit) < 1.0, "Regen merkt sich den Zeitpunkt")
+	pruefe(float(welt.gelaende.material.get_shader_parameter("nass")) > 0.9, "Bei Regen glänzt der Boden")
+	var regen_knoten: GPUParticles3D = welt.find_child("Regen", true, false)
+	welt.spieler.global_position = Vector3(2.0, 0.1, 12.0)
+	await warte(0.5)
+	pruefe(regen_knoten != null and regen_knoten.emitting, "Draußen fallen Tropfen")
+	welt.spieler.global_position = Vector3(0.15, 0.05, -1.0)
+	await warte(0.8)
+	pruefe(h.drinnen > 0.9 and not regen_knoten.emitting, "In der Hütte regnet es nicht, draußen klingt gedämpft")
+	h.setze_wetter("bewoelkt", true)
+	h.setze_zeit(13.0)
+	pruefe(welt.sonne.light_energy < 2.0, "Bewölkt dimmt die Sonne")
+	# Rauch, Enten, Klangzone
+	pruefe(t.rauch.emitting and t.enten.size() == 2, "Rauch aus dem Schornstein, zwei Enten auf dem Bach")
+	pruefe(welt.find_child("KlangWerkstatt", true, false) != null, "Klangzone Werkstatt")
+	pruefe(AudioServer.get_bus_index("Draussen") >= 0, "Audio-Bus Draussen")
+	h.setze_wetter("klar", true)
+	h.setze_zeit(10.5)
+	await warte(0.3)
 
 
 func _siedlung() -> void:
