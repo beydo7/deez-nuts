@@ -3,9 +3,10 @@ extends Node3D
 ## Der Berg aus 1.000.000 Nüssen als begehbares Höhenfeld.
 ## Wo gesammelt wird, sinkt er ab, Nüsse rutschen in Löcher nach. Die Anzahl ist fest an
 ## Game.berg_rest() gekoppelt: ist das Volumen weg, ist auch der Zähler bei null.
-## Zu sehen sind immer echte Nüsse in zwei Lagen: Die untere Lage bedeckt den ganzen Berg, die
-## obere liegt in Spielernähe darüber. Darunter ist nur noch dunkler Grund wie Schatten zwischen
-## Nüssen. Wer oben Nüsse wegnimmt, sieht sofort andere von unten nachrücken.
+## Zu sehen sind nur echte Nüsse. Eine Grundlage bedeckt den ganzen Berg; in Spielernähe liegen
+## darüber drei dicht gepackte, gegeneinander versetzte Lagen, sodass man zwischen den Nüssen
+## wieder nur Nüsse sieht. Eine bemalte Fläche gibt es nicht mehr, nur tief unten eine schwarze
+## Sichtsperre. Wer oben Nüsse wegnimmt, sieht sofort andere von unten nachrücken.
 
 signal veraendert
 
@@ -19,6 +20,8 @@ const MAX_STUFE := 0.36              # größter Höhenunterschied zwischen Nach
 const NAH_KACHEL := 2.0              # Kantenlänge einer Kachel der oberen Lage
 const NAH_ABSTAND := 2.0 / 11.0      # Abstand der Nüsse in der oberen Lage (11 je Kachelkante)
 const NAH_RADIUS := [5.5, 7.0, 8.5]  # je Qualitätsstufe: so weit liegt die obere Lage um den Spieler
+const TIEF_RADIUS := [4.0, 5.5, 7.0]  # so weit liegen die beiden tieferen Lagen um den Spieler
+const TIEF_VERSATZ := [Vector2(0.5, 0.5), Vector2(0.0, 0.5)]   # gegen die obere Lage versetzt, in Zellen
 const FERN_KACHEL := 8.0             # Kantenlänge einer Kachel der unteren Lage
 const FERN_ABSTAND := [0.34, 0.3, 0.27]
 const RUECK_DAUER := 0.26            # so lange braucht eine Nuss zum Nachrücken
@@ -33,8 +36,10 @@ var _schmutzig := {}                 # Vector2i -> true
 var _kollision_schmutzig := false
 var _kollision_timer := 0.0
 var _bruch := 0.0                    # Nachkommastellen beim Zählen
-var _nah := {}                       # Kachel -> [MultiMeshInstance3D Walnuss, Haselnuss]
+var _nah := {}                       # Kachel -> [oben Walnuss, oben Haselnuss, tief Walnuss, tief Haselnuss, tief gebaut?]
 var _nah_schmutzig := {}
+var _tief_schmutzig := {}
+var _netz_mittel: Array = []
 var _nah_mitte := Vector3(INF, 0, INF)
 var _fern := {}                      # Kachel -> [MultiMeshInstance3D, MultiMeshInstance3D]
 var _fern_schmutzig := {}
@@ -49,11 +54,12 @@ var _material: Material
 
 
 func _ready() -> void:
-	# Der Grund unter den Nüssen: fast schwarzbraun, damit Lücken wie Schatten in der Tiefe wirken
-	_material = Look.nusshaufen(0.2).duplicate()
-	_material.set_shader_parameter("fugenfarbe", Color(0.07, 0.04, 0.02))
-	_material.set_shader_parameter("kiesel_a", Color(0.3, 0.2, 0.11))
-	_material.set_shader_parameter("kiesel_b", Color(0.27, 0.15, 0.06))
+	# Keine bemalte Fläche mehr. Tief unter den Nüssen liegt nur eine schwarze Sichtsperre ohne Muster
+	# und ohne Licht, damit man nirgends durch den Berg auf die Wiese schaut.
+	var sperre := StandardMaterial3D.new()
+	sperre.albedo_color = Color(0.03, 0.018, 0.008)
+	sperre.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_material = sperre
 	koerper = StaticBody3D.new()
 	koerper.collision_layer = Data.L_WELT
 	koerper.collision_mask = 0
@@ -72,6 +78,7 @@ func _ready() -> void:
 	for id in ["wal", "hasel"]:
 		_netz_fein.append(Nussmodelle.ganz(id, 1, 0))
 		_netz_grob.append(Nussmodelle.ganz(id, 0, 3))
+		_netz_mittel.append(Nussmodelle.ganz(id, 2, 4))
 		_nussmaterial.append(Look.nuss(id, false, false, false, true))
 	alles_neu()
 
@@ -340,6 +347,7 @@ func _markieren(x0: int, x1: int, z0: int, z1: int) -> void:
 		for kx in range(int(floor(a.x / NAH_KACHEL)), int(floor(b.x / NAH_KACHEL)) + 1):
 			if _nah.has(Vector2i(kx, kz)):
 				_nah_schmutzig[Vector2i(kx, kz)] = true
+				_tief_schmutzig[Vector2i(kx, kz)] = true
 	for kz in range(int(floor(a.z / FERN_KACHEL)), int(floor(b.z / FERN_KACHEL)) + 1):
 		for kx in range(int(floor(a.x / FERN_KACHEL)), int(floor(b.x / FERN_KACHEL)) + 1):
 			_fern_schmutzig[Vector2i(kx, kz)] = true
@@ -364,14 +372,21 @@ func _process(delta: float) -> void:
 		var p := cam.global_position
 		if Vector2(p.x - _nah_mitte.x, p.z - _nah_mitte.z).length() > 1.0:
 			_nah_auswaehlen(p)
-	var fertig := 0
-	for k in _nah_schmutzig.keys():
+	# Je Bild ein paar Kacheln, die nächsten zuerst: Wo man steht, ist der Berg sofort voll
+	for runde in 4:
+		var k = _naechste(_nah_schmutzig)
+		if k == null:
+			break
 		_nah_schmutzig.erase(k)
 		if _nah.has(k):
 			_nah_bauen(k)
-			fertig += 1
-			if fertig >= 3:
-				break
+	for runde in 2:
+		var k = _naechste(_tief_schmutzig)
+		if k == null:
+			break
+		_tief_schmutzig.erase(k)
+		if _nah.has(k):
+			_tief_bauen(k)
 	_fern_timer -= delta
 	if _fern_timer <= 0.0 and not _fern_schmutzig.is_empty():
 		_fern_timer = 0.1
@@ -415,7 +430,7 @@ func _chunk_bauen(k: Vector2i) -> void:
 		for x in range(x0, x0 + b):
 			var p := _welt(x, z)
 			var wert := h[z * (N + 1) + x]
-			p.y = wert - 0.15
+			p.y = wert - 0.34
 			pos.append(p)
 			var hl := h[z * (N + 1) + max(x - 1, 0)]
 			var hr := h[z * (N + 1) + min(x + 1, N)]
@@ -475,6 +490,18 @@ func _fuelle(mmi: MultiMeshInstance3D, lagen: Array, farben: Array) -> void:
 	mmi.visible = not lagen.is_empty()
 
 
+## Die Kachel aus der Liste, die dem Spieler am nächsten liegt (null, wenn die Liste leer ist).
+func _naechste(liste: Dictionary):
+	var beste = null
+	var kurz := INF
+	for k in liste:
+		var d := Vector2((k.x + 0.5) * NAH_KACHEL - _nah_mitte.x, (k.y + 0.5) * NAH_KACHEL - _nah_mitte.z).length_squared()
+		if d < kurz:
+			kurz = d
+			beste = k
+	return beste
+
+
 ## Welche Kacheln der oberen Lage es um den Spieler gibt.
 func _nah_auswaehlen(mitte: Vector3) -> void:
 	_nah_mitte = mitte
@@ -491,16 +518,22 @@ func _nah_auswaehlen(mitte: Vector3) -> void:
 				continue
 			if absf(m.x - MITTE.x) > RADIUS + 4.0 or absf(m.y - MITTE.z) > RADIUS + 4.0:
 				continue
-			_nah[k] = [null, null]
+			_nah[k] = [null, null, null, null, false]
 			_nah_schmutzig[k] = true
+			_tief_schmutzig[k] = true
+	var tief: float = TIEF_RADIUS[_qualitaet()]
 	for k in _nah.keys():
 		var m := Vector2((k.x + 0.5) * NAH_KACHEL, (k.y + 0.5) * NAH_KACHEL)
-		if m.distance_to(Vector2(mitte.x, mitte.z)) > radius + 3.0:
-			for mmi in _nah[k]:
-				if mmi:
-					mmi.queue_free()
+		var weit := m.distance_to(Vector2(mitte.x, mitte.z))
+		if weit > radius + 3.0:
+			for i in 4:
+				if _nah[k][i]:
+					_nah[k][i].queue_free()
 			_nah.erase(k)
 			_nah_schmutzig.erase(k)
+			_tief_schmutzig.erase(k)
+		elif (weit <= tief) != bool(_nah[k][4]):
+			_tief_schmutzig[k] = true
 
 
 ## Obere Lage einer Kachel: dicht, fein, hell. Jede Zelle hat ihre feste Nuss, bis dort eine genommen wird.
@@ -541,8 +574,44 @@ func _nah_bauen(k: Vector2i) -> void:
 				_rueckt[zelle][3] = lagen[art][j]
 
 
-## Untere Lage einer Kachel: etwas größere, grobe, dunklere Nüsse knapp unter der Oberfläche.
-## Aus der Ferne ist sie der Berg, aus der Nähe füllt sie die Lücken der oberen Lage.
+## Die zwei tieferen Lagen einer Kachel, nur nah am Spieler: gleiche Nüsse wie oben, versetzt und
+## je eine knappe Nussdicke tiefer. Sie füllen jede Lücke der oberen Lage mit weiteren Nüssen.
+func _tief_bauen(k: Vector2i) -> void:
+	var paar: Array = _nah[k]
+	var m := Vector2((k.x + 0.5) * NAH_KACHEL, (k.y + 0.5) * NAH_KACHEL)
+	var da: bool = m.distance_to(Vector2(_nah_mitte.x, _nah_mitte.z)) <= TIEF_RADIUS[_qualitaet()]
+	paar[4] = da
+	var lagen := [[], []]
+	var farben := [[], []]
+	if da:
+		var je := int(round(NAH_KACHEL / NAH_ABSTAND))
+		for lage in 2:
+			var versatz: Vector2 = TIEF_VERSATZ[lage]
+			for iz in je:
+				for ix in je:
+					var hsh := hash(Vector3i(k.x * je + ix, k.y * je + iz, 5000 + lage))
+					var x := (k.x * je + ix + versatz.x + float(hsh & 255) / 255.0 * 0.8) * NAH_ABSTAND
+					var z := (k.y * je + iz + versatz.y + float((hsh >> 8) & 255) / 255.0 * 0.8) * NAH_ABSTAND
+					var y := hoehe_bei(x, z)
+					if y < 0.2:
+						continue
+					var art := (hsh >> 16) & 1
+					var dreh := Basis.from_euler(Vector3(float((hsh >> 4) & 63) * 0.1, float((hsh >> 10) & 63) * 0.1, float((hsh >> 22) & 63) * 0.1))
+					var s := 1.75 + float((hsh >> 20) & 15) * 0.04
+					# nur ganz leicht dunkler: den Rest erledigen die Schatten der Nüsse darüber
+					var hell: float = [0.93, 0.86][lage] + float((hsh >> 26) & 31) / 31.0 * 0.12
+					lagen[art].append(Transform3D(dreh.scaled(Vector3.ONE * s), Vector3(x, y - 0.085 - 0.075 * lage, z)))
+					farben[art].append(Color(hell, hell, hell * 0.97))
+	for art in 2:
+		if paar[2 + art] == null:
+			if lagen[art].is_empty():
+				continue
+			paar[2 + art] = _mmi(_netz_mittel[art], _nussmaterial[art], false)
+		_fuelle(paar[2 + art], lagen[art], farben[art])
+
+
+## Grundlage einer Kachel für den ganzen Berg: etwas größere Nüsse knapp unter der Oberfläche.
+## Aus der Ferne ist sie der Berg, aus der Nähe liegt sie zwischen den anderen Lagen.
 func _fern_bauen(k: Vector2i) -> void:
 	var lagen := [[], []]
 	var farben := [[], []]
@@ -563,8 +632,8 @@ func _fern_bauen(k: Vector2i) -> void:
 			var art := (hsh >> 16) & 1
 			var dreh := Basis.from_euler(Vector3(float((hsh >> 4) & 63) * 0.1, float((hsh >> 10) & 63) * 0.1, 0.0))
 			var s := 2.25 + float((hsh >> 20) & 15) * 0.035
-			var hell := 0.62 + float((hsh >> 26) & 31) / 31.0 * 0.28
-			lagen[art].append(Transform3D(dreh.scaled(Vector3.ONE * s), Vector3(x, y - 0.085, z)))
+			var hell := 0.84 + float((hsh >> 26) & 31) / 31.0 * 0.22
+			lagen[art].append(Transform3D(dreh.scaled(Vector3.ONE * s), Vector3(x, y - 0.12, z)))
 			farben[art].append(Color(hell, hell * 0.97, hell * 0.92))
 	if not _fern.has(k):
 		if lagen[0].is_empty() and lagen[1].is_empty():
@@ -625,10 +694,30 @@ func sichtbare_nuesse() -> Vector2i:
 	var oben := 0
 	var unten := 0
 	for k in _nah:
-		for mmi in _nah[k]:
-			if mmi:
-				oben += mmi.multimesh.instance_count
+		for i in 2:
+			if _nah[k][i]:
+				oben += _nah[k][i].multimesh.instance_count
 	for k in _fern:
 		for mmi in _fern[k]:
 			unten += mmi.multimesh.instance_count
 	return Vector2i(oben, unten)
+
+
+func tiefe_nuesse() -> int:
+	var n := 0
+	for k in _nah:
+		for i in [2, 3]:
+			if _nah[k][i]:
+				n += _nah[k][i].multimesh.instance_count
+	return n
+
+
+## Baut alle Lagen um eine Stelle sofort fertig (für Bildschirmfotos und Tests; im Spiel
+## verteilt sich das über ein paar Bilder).
+func sofort_um(mitte: Vector3) -> void:
+	_nah_auswaehlen(mitte)
+	for k in _nah.keys():
+		_nah_bauen(k)
+		_tief_bauen(k)
+	_nah_schmutzig.clear()
+	_tief_schmutzig.clear()

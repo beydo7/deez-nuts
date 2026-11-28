@@ -567,6 +567,11 @@ func _berg_und_sammeln() -> void:
 	berg._nah_schmutzig.clear()
 	lagen = berg.sichtbare_nuesse()
 	pruefe(lagen.x > 1500, "Obere Lage liegt um den Spieler (%d Nüsse)" % lagen.x)
+	for k in berg._nah.keys():
+		berg._tief_bauen(k)
+	berg._tief_schmutzig.clear()
+	pruefe(berg.tiefe_nuesse() > 3000, "Darunter liegen zwei weitere Lagen echter Nüsse (%d)" % berg.tiefe_nuesse())
+	pruefe(berg._material is StandardMaterial3D, "Unter den Nüssen gibt es keine bemalte Fläche mehr")
 	var zellen_vorher: int = berg._generation.size()
 	berg.abbauen(Vector3(1.0, 0, -13.0), 0.6, 6)
 	pruefe(berg._rueckt.size() >= 4 and berg._generation.size() >= zellen_vorher + 4, "Wo Nüsse genommen werden, rücken andere nach (%d)" % berg._rueckt.size())

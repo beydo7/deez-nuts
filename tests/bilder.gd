@@ -53,6 +53,8 @@ func _ready() -> void:
 				s.global_position = Vector3(px, welt.gelaende.hoehe_bei(px, pz) + 0.1 + hoch, pz)
 				await _warte(0.4)
 				_zielen(s, Vector3(float(w[2]), float(w[3]), float(w[4])))
+				# Im langsamen Testbild kämen die Nusslagen zu spät: hier sofort fertig bauen
+				welt.berg.sofort_um(s.global_position)
 				await _warte(1.0)
 				await _foto(nz[0])
 			get_tree().quit(0)
