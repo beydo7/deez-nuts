@@ -218,7 +218,7 @@ func _reiter_werkzeuge() -> Control:
 			knoepfe.append(k)
 		else:
 			var werte := Game.werkzeug_werte(id)
-			text = w.text + "\nStufe %d/%d · Kraft %.1f · Zudrücken %.2f s · Sweet Spot %+d %%" % [werte.stufe, Data.WERKZEUG_MAX_STUFE, werte.kraft, werte.zeit, int(round(werte.sweet * 100))]
+			text = w.text + "\nStufe %d/%d · Kraft %.1f · Zeigerrunde %.2f s · Trefferzone %+d %%" % [werte.stufe, Data.WERKZEUG_MAX_STUFE, werte.kraft, werte.zeit * Knackstation.DRUCK_MAX, int(round(werte.sweet * 100))]
 			if Game.werkzeug_aktiv == id:
 				var aktiv := Stil.knopf("In Benutzung", func(): pass)
 				aktiv.disabled = true
@@ -323,8 +323,6 @@ func zeige_pause() -> void:
 	v.add_child(_regler("Musik", 0.0, 1.0, float(Game.einstellungen.musik), func(x):
 		Game.einstellungen.musik = x
 		Sfx.musik_lautstaerke(x)))
-	v.add_child(_schalter("Hilfsring um die Nuss zeigen  [H]", "hilfsring"))
-	v.add_child(_schalter("Tippen statt Halten (Klick = zudrücken, Klick = loslassen)", "tippen"))
 	v.add_child(_schalter("Zeit anhalten (immer dieselbe Tageszeit)", "zeit_fest"))
 	v.add_child(Stil.knopf("Steuerung anzeigen", zeige_intro, 20))
 	v.add_child(Stil.knopf("Speichern", func():
@@ -416,7 +414,8 @@ func zeige_intro() -> void:
    [X] Sammelwerkzeug wechseln · [WASD] laufen · [Shift] rennen · [Leertaste] springen
 
 In der Hütte an der Knackbank ([E] auf den Nussknacker oder den Hocker):
-   [R] holt Nüsse aus dem Lager · [Linksklick halten] zudrücken, loslassen wenn die Nuss zittert
+   [R] holt Nüsse aus dem Lager · um die Nuss läuft ein Zeiger im Kreis:
+   [Leertaste] drücken, wenn er im hellen Bereich steht – knapp daneben gibt Riss oder Bruch
    [Rechtsklick] Schalen wegwischen · [E] aufstehen
    Knacken bringt viel mehr als Abliefern. Volle Gläser verkauft die Rohrpost von selbst.
 

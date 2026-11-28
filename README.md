@@ -43,12 +43,11 @@ Abliefern geht von selbst: in den gelben Kreis am Trichter (oder an einem Außen
 
 | Taste | Aktion |
 | --- | --- |
-| Linksklick halten | zudrücken – loslassen, wenn die Nuss zittert und knistert |
+| Leertaste | Trefferprobe an der Knackbank: drücken, wenn der Zeiger im hellen Bereich steht |
 | Rechtsklick | Schalen in den Eimer wischen (oder Eichhörnchen verjagen) |
 | R | Nüsse aus dem Lager holen |
 | Maus | etwas umschauen (z. B. zum Fenster) |
 | E / Esc / S | aufstehen |
-| H | Hilfsring um die Nuss an/aus |
 
 ## Was drin ist
 
@@ -56,7 +55,7 @@ Abliefern geht von selbst: in den gelben Kreis am Trichter (oder an einem Außen
 - **Sammeln mit wachsenden Werkzeugen:** bloße Hände, Holzlöffel, Laubharke, Schaufel, Laubsauger, Saugturbine, XXL-Sauger. Jedes hat eigenes Modell, Rate, Radius und Reichweite. Nüsse fliegen sichtbar in den Beutel.
 - **Tragen:** Hosentaschen, Stoffbeutel, Rucksack, Kiepe, Schubkarre, Bollerwagen, Riesensack. Größere Beutel machen etwas langsamer.
 - **Abliefern:** Trichter und Silo an der Hütte, sofort Münzen pro Nuss, die Nüsse landen im Lager. Volles Lager verkauft den Rest roh.
-- **Knacken wie in Potato Please:** Man setzt sich an den Tisch, die Kamera fährt nah heran, die eigenen Hände greifen den Nussknacker. Risse wachsen, die Nuss zittert im richtigen Moment, im Sweet Spot knistert es. Beim Knack: Einfrier-Moment, Kamerastoß, Splitter, „PERFEKT!“. Kerne bringen deutlich mehr als rohe Nüsse.
+- **Knacken wie in Potato Please:** Man setzt sich an den Tisch, die Kamera fährt nah heran, die eigenen Hände greifen den Nussknacker. Um die Nuss läuft ein Zeiger einmal im Kreis (Trefferprobe wie ein Skill-Check): [Leertaste] im hellen Bereich knackt perfekt, knapp davor gibt es einen Riss, knapp danach Bruch, viel zu spät Matsch. Die Zone liegt jedes Mal woanders; ihre Breite hängt von Nuss und Werkzeug ab, das Tempo des Zeigers vom Werkzeug. Beim Knack: Einfrier-Moment, Kamerastoß, Splitter, „PERFEKT!“. Kerne bringen deutlich mehr als rohe Nüsse.
 - **Sechs Nusssorten:** Haselnuss, Walnuss, Mandel, Pekannuss, Paranuss, Macadamia, dazu goldene, faule, doppelte und Wurmnüsse.
 - **Automatisieren:** Sammel-Eichhörnchen (beliebig viele, mit Halstuch), vier Außenposten mit Förderbändern zum Silo, Nussrutsche, Walzenknacker, Lagerhalle, Katze Mimi, Sieb, Glasdeckel, Rohrpost.
 - **Opas Notizbuch:** Skillbaum mit über 200 Knoten in sieben Pfaden (Sammeln, Tragen, Handel, Knacken, Maschinen, Helfer, Glück) und 21 Schlüssel-Talenten. Verschieben, zoomen, anklicken.

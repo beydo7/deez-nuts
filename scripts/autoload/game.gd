@@ -70,8 +70,6 @@ var ziel_zaehler: int = 0
 
 var einstellungen := {
 	"empfindlichkeit": 0.25,
-	"hilfsring": true,
-	"tippen": false,
 	"lautstaerke": 0.8,
 	"musik": 0.6,
 	"zeit_fest": false,
@@ -139,7 +137,7 @@ func _eingaben_anlegen() -> void:
 	var tasten := {
 		"vor": [KEY_W, KEY_UP], "zurueck": [KEY_S, KEY_DOWN], "links": [KEY_A, KEY_LEFT], "rechts": [KEY_D, KEY_RIGHT],
 		"springen": [KEY_SPACE], "rennen": [KEY_SHIFT], "benutzen": [KEY_E], "fallenlassen": [KEY_Q],
-		"wischen": [KEY_F], "hebel": [KEY_R], "talente": [KEY_TAB], "hilfsring": [KEY_H], "pause": [KEY_ESCAPE],
+		"wischen": [KEY_F], "hebel": [KEY_R], "talente": [KEY_TAB], "treffen": [KEY_SPACE], "pause": [KEY_ESCAPE],
 		"laden": [KEY_B], "werkzeug_wechseln": [KEY_X],
 		"cheat_geld": [KEY_F9], "cheat_nuesse": [KEY_F10], "cheat_mp": [KEY_F11],
 	}

@@ -1,7 +1,7 @@
 class_name Hud
 extends CanvasLayer
 ## Alles, was über dem Bild liegt: Kasse, Ziel, Berg, Bestellungen, Hinweise, Fadenkreuz,
-## Hilfsring in der Knack-Ansicht, Ergebnis-Stempel und fliegende Münzbeträge.
+## Trefferprobe (Ring mit Zeiger) in der Knack-Ansicht, Ergebnis-Stempel und fliegende Münzbeträge.
 
 var spieler: Spieler
 var welt: Node
@@ -329,7 +329,7 @@ func _process(delta: float) -> void:
 		_kreuz.aktiv = p != ""
 		_kreuz.sitzend = sitzt
 		var st := spieler.blickt_auf_station()
-		_kreuz.station = st if (sitzt and st and st.geladen and Game.einstellungen.hilfsring) else null
+		_kreuz.station = st if (sitzt and st and st.zeigt_ring()) else null
 		if _kreuz.station:
 			_kreuz.nuss_bild = spieler.kamera.unproject_position(st.sitz_global())
 		_kreuz.queue_redraw()
@@ -402,7 +402,7 @@ func _tasten_leiste_zeichnen(sitzt: bool) -> void:
 	var paare: Array = []
 	match modus:
 		"sitzen":
-			paare = [["Linksklick", "halten & loslassen: knacken"], ["Rechtsklick", "Schalen wischen"], ["R", "Nüsse aus dem Lager"], ["E", "aufstehen"]]
+			paare = [["Leertaste", "im hellen Bereich drücken: knacken"], ["Rechtsklick", "Schalen wischen"], ["R", "Nüsse aus dem Lager"], ["E", "aufstehen"]]
 		"leer":
 			paare = [["R", "Nüsse aus dem Lager holen"], ["Rechtsklick", "Schalen wischen"], ["E", "aufstehen"]]
 		"dieb":
@@ -678,27 +678,79 @@ class Fadenkreuz extends Control:
 				draw_circle(m, 2.5, Color(1, 1, 1, 0.95))
 			else:
 				draw_circle(m, 2.5, Color(1, 1, 1, 0.7))
-		if station == null or station.zonen.is_empty():
+		if station == null or not station.zonen.has("s0"):
 			return
-		# Hilfsring um die Nuss: Zonen und Druck-Zeiger
-		var mitte := nuss_bild + Vector2(0, 0)
-		var r := 92.0
-		var z := station.zonen
+		_trefferprobe(station)
+
+	## Die Trefferprobe um die Nuss: Ring, helle Trefferzone, roter Zeiger, darunter die Taste.
+	func _trefferprobe(st: Knackstation) -> void:
+		const HELL := Color(1.0, 0.97, 0.86)
+		const GELB := Color(1.0, 0.82, 0.3)
+		const GRUEN := Color(0.45, 1.0, 0.4)
 		var gesamt := Knackstation.DRUCK_MAX
-		var start := -PI * 0.5
-		draw_arc(mitte, r, 0, TAU, 64, Color(0, 0, 0, 0.35), 12.0, true)
-		var abschnitte := [[0.0, z.a, Color(1, 1, 1, 0.22)], [z.a, z.s0, Color(1, 0.88, 0.45, 0.55)],
-			[z.s0, z.s1, Color(0.45, 1.0, 0.4, 0.95)], [z.s1, z.m, Color(1.0, 0.6, 0.2, 0.7)], [z.m, gesamt, Color(1.0, 0.3, 0.25, 0.7)]]
-		for a in abschnitte:
-			var w0: float = start + TAU * float(a[0]) / gesamt
-			var w1: float = start + TAU * float(a[1]) / gesamt
-			if w1 > w0:
-				draw_arc(mitte, r, w0, w1, 32, a[2], 8.0, true)
-		if z.kappe < gesamt:
-			var wk: float = start + TAU * float(z.kappe) / gesamt
-			draw_line(mitte + Vector2(cos(wk), sin(wk)) * (r - 12), mitte + Vector2(cos(wk), sin(wk)) * (r + 12), Color(1, 0.2, 0.2), 4.0, true)
-		var wd: float = start + TAU * station.druck / gesamt
-		var im_sweet: bool = station.druck >= z.s0 and station.druck <= z.s1
-		var zeiger_farbe := Color(0.6, 1.0, 0.5) if im_sweet else Color(1, 1, 1)
-		draw_line(mitte + Vector2(cos(wd), sin(wd)) * (r - 16), mitte + Vector2(cos(wd), sin(wd)) * (r + 14), zeiger_farbe, 4.0, true)
-		draw_circle(mitte + Vector2(cos(wd), sin(wd)) * (r + 14), 4.0, zeiger_farbe)
+		var mitte := nuss_bild
+		var winkel := func(d: float) -> float: return -PI * 0.5 + TAU * clampf(d, 0.0, gesamt) / gesamt
+		var blitz := clampf(st.treffer_zeit / Knackstation.NACHHALL, 0.0, 1.0)
+		var laeuft := st.geladen and st.phase != "ruhe"
+		# Nachhall eines Treffers, der die Nuss geöffnet hat: Zone und Zeiger blitzen auf und wachsen
+		# nach außen weg, während innen schon der Ring für die nächste Nuss aufploppt.
+		if blitz > 0.0 and st.phase != "treffer" and st.treffer_zonen.has("s0"):
+			var tz: Dictionary = st.treffer_zonen
+			var farbe := GRUEN if st.treffer_art == "perfekt" else Color(1.0, 0.5, 0.25)
+			var rb := 112.0 * (1.0 + 0.22 * (1.0 - blitz))
+			if st.treffer_art == "perfekt":
+				draw_arc(mitte, rb, winkel.call(tz.s0), winkel.call(tz.s1), 32, Color(farbe, blitz), 18.0 + 10.0 * blitz, true)
+			var wb: float = winkel.call(st.treffer_druck)
+			var rv := Vector2(cos(wb), sin(wb))
+			draw_line(mitte + rv * (rb - 34.0), mitte + rv * (rb + 18.0), Color(farbe, blitz), 5.0, true)
+		if not laeuft:
+			return
+		var z: Dictionary = st.zonen
+		var steht := st.phase == "treffer"
+		# Aufploppen: Ring kommt von außen herein
+		var ein := st.vorlauf_anteil()
+		var r := 112.0 * lerpf(1.3, 1.0, 1.0 - pow(1.0 - ein, 3.0))
+		var alpha := clampf(ein * 2.5, 0.0, 1.0)
+		if st.phase == "warten":
+			alpha = 0.45
+		# Grundring und Startmarke oben
+		draw_arc(mitte, r, 0, TAU, 96, Color(0, 0, 0, 0.5 * alpha), 11.0, true)
+		draw_arc(mitte, r, 0, TAU, 96, Color(1, 1, 1, 0.6 * alpha), 2.0, true)
+		draw_line(mitte + Vector2(0, -r - 10), mitte + Vector2(0, -r + 10), Color(1, 1, 1, 0.5 * alpha), 2.0, true)
+		# Zonen
+		var z0: float = z.s0
+		var zonenfarbe := HELL
+		if z.get("schwach", false):
+			# Werkzeug zu schwach: Die ganze Zone knackst nur an, deshalb gelb und mit der Riss-Flanke verbunden
+			z0 = z.a
+			zonenfarbe = GELB
+		else:
+			draw_arc(mitte, r, winkel.call(z.a), winkel.call(z.s0), 24, Color(GELB, 0.8 * alpha), 7.0, true)
+			draw_arc(mitte, r, winkel.call(z.s1), winkel.call(z.m), 24, Color(1.0, 0.55, 0.2, 0.8 * alpha), 7.0, true)
+			draw_arc(mitte, r, winkel.call(z.m), winkel.call(gesamt), 32, Color(0.95, 0.25, 0.2, 0.45 * alpha), 4.0, true)
+		var dick := 18.0 + 10.0 * (st.sprung_zeit / 0.3)
+		draw_arc(mitte, r, winkel.call(z0) - 0.014, winkel.call(z.s1) + 0.014, 32, Color(0.1, 0.06, 0.03, 0.9 * alpha), dick + 5.0, true)
+		draw_arc(mitte, r, winkel.call(z0), winkel.call(z.s1), 32, Color(zonenfarbe, alpha), dick, true)
+		# Zeiger
+		if st.phase != "warten":
+			var w: float = winkel.call(st.druck)
+			var richtung := Vector2(cos(w), sin(w))
+			var zeiger := Color(0.95, 0.2, 0.15)
+			if steht and st.treffer_art == "riss":
+				zeiger = GELB
+			draw_line(mitte + richtung * (r - 36.0), mitte + richtung * (r + 20.0), Color(0.08, 0.04, 0.02, 0.85 * alpha), 9.0, true)
+			draw_line(mitte + richtung * (r - 35.0), mitte + richtung * (r + 19.0), Color(zeiger, alpha), 5.0, true)
+			draw_circle(mitte + richtung * (r + 19.0), 5.0, Color(zeiger, alpha))
+		# Taste unter dem Ring
+		var schrift := Look.schrift(600)
+		var text := "LEERTASTE"
+		if st.phase == "warten":
+			text = "LEERTASTE: NEUE RUNDE"
+			alpha = 1.0
+		var breite := schrift.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 28.0
+		var kasten := Rect2(mitte + Vector2(-breite * 0.5, r + 32.0), Vector2(breite, 30.0))
+		var gedrueckt := 3.0 if steht else 0.0
+		kasten.position.y += gedrueckt
+		draw_rect(Rect2(kasten.position + Vector2(0, 4.0 - gedrueckt), kasten.size), Color(0.1, 0.06, 0.03, 0.7 * alpha))
+		draw_rect(kasten, Color(0.98, 0.94, 0.84, 0.95 * alpha))
+		draw_string(schrift, kasten.position + Vector2(14.0, 21.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.2, 0.12, 0.06, alpha))

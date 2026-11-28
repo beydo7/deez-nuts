@@ -136,9 +136,8 @@ func _ready() -> void:
 
 func _menue(oeffnen: Callable) -> void:
 	spieler.gesperrt = true
-	if spieler.aktive_station:
-		spieler.aktive_station.druecken_ende()
-		spieler.aktive_station = null
+	if spieler.sitz_station:
+		spieler.sitz_station.abbrechen()
 	oeffnen.call()
 
 
@@ -151,9 +150,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("talente"):
 		_menue(menues.zeige_talente)
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("hilfsring"):
-		Game.einstellungen.hilfsring = not Game.einstellungen.hilfsring
-		Game.toast.emit("Hilfsring " + ("an" if Game.einstellungen.hilfsring else "aus"), Game.FARBE_INFO)
 	elif event.is_action_pressed("hebel") and not spieler.sitzt:
 		hebel_ziehen()
 	elif event.is_action_pressed("cheat_geld"):

@@ -1205,7 +1205,7 @@ func figur_nehmen(id: String) -> void:
 	Sfx.spiele("ziel", -6.0)
 	if liste.size() >= FIGUREN.size():
 		Game.fund("figuren")
-		Game.toast.emit("Alle zwölf Figuren! Sweet Spot dauerhaft +3 %. Der Goldene Nussknacker steht jetzt in der Küche.", Game.FARBE_GOLD)
+		Game.toast.emit("Alle zwölf Figuren! Trefferzone dauerhaft +3 %. Der Goldene Nussknacker steht jetzt in der Küche.", Game.FARBE_GOLD)
 		_parade_starten()
 	else:
 		Game.toast.emit("Nussknacker-Figur %d von %d" % [liste.size(), FIGUREN.size()], Game.FARBE_GUT)

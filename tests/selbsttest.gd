@@ -613,42 +613,101 @@ func _knacken() -> void:
 	var n: int = welt._nuesse_in_schale()
 	pruefe(n > 0, "Hebel holt Nüsse aus dem Lager in die Schale (%d)" % n)
 	var st: Knackstation = welt.station
-	# Haselnuss mit bloßen Händen: direkt perfekt
-	st.lade({"art": "nuss", "nuss": "hasel"})
+	# Haselnuss mit bloßen Händen: Treffer in der Zone ist direkt perfekt
+	var hasel := {"art": "nuss", "nuss": "hasel"}
+	st.lade(hasel)
 	pruefe(st.geladen, "Nuss liegt im Knacker")
 	var vorher: int = Game.statistik.perfekt
-	st.druecken_start()
+	st.pruefung_start()
+	pruefe(st.phase == "vorlauf" and not st.drueckt and st.zeigt_ring(), "Trefferprobe: Ring ploppt auf, Zeiger wartet noch")
+	st.treffen()
+	pruefe(st.geladen and st.phase == "vorlauf", "[Leertaste] im Vorlauf zählt nicht")
+	await warte(Knackstation.VORLAUF + 0.15)
+	pruefe(st.phase == "lauf" and st.drueckt and st.druck > 0.0, "Nach dem Vorlauf läuft der Zeiger")
 	st.druck = (st.zonen.s0 + st.zonen.s1) * 0.5
-	st.druecken_ende()
-	pruefe(Game.statistik.perfekt == vorher + 1, "Perfekter Knack wird gezählt")
+	st.treffen()
+	pruefe(Game.statistik.perfekt == vorher + 1, "Treffer in der Zone: perfekter Knack wird gezählt")
 	pruefe(Game.combo == 1, "Combo steigt")
-	# Walnuss mit Händen: zu schwach, erst Riss
+	pruefe(st.zeigt_ring() and st.treffer_art == "perfekt", "Ring zeigt den Treffer noch kurz an")
+	# Die Zone liegt jedes Mal woanders, aber immer ganz auf dem Ring
+	var mitten := {}
+	var im_ring := true
+	for i in 16:
+		st.lade(hasel)
+		st.pruefung_start(0.0)
+		mitten[snappedf((st.zonen.s0 + st.zonen.s1) * 0.5, 0.02)] = true
+		if st.zonen.a < 0.19 or st.zonen.m > Knackstation.DRUCK_MAX:
+			im_ring = false
+		st.abbrechen()
+		st.entnehme()
+	pruefe(mitten.size() >= 4, "Trefferzone liegt jedes Mal woanders (%d Lagen)" % mitten.size())
+	pruefe(im_ring, "Zone samt Flanken passt immer auf den Ring")
+	# Walnuss mit Händen: zu schwach, ein Treffer knackst sie nur an
 	st.lade({"art": "nuss", "nuss": "wal"})
-	pruefe(st.zonen.kappe < Knackstation.DRUCK_MAX, "Hände sind zu schwach für Walnuss")
-	st.druecken_start()
-	st.druck = (st.zonen.a + st.zonen.s0) * 0.5
-	st.druecken_ende()
-	pruefe(st.nuss_daten.get("angeknackst", false), "Riss macht die Nuss angeknackst")
-	pruefe(st.zonen.kappe >= Knackstation.DRUCK_MAX, "Angeknackste Walnuss schaffen die Hände")
-	st.druecken_start()
+	pruefe(st.zonen.schwach and not st.zonen.zu_hart, "Hände sind zu schwach für Walnuss")
+	st.pruefung_start(0.0)
 	st.druck = (st.zonen.s0 + st.zonen.s1) * 0.5
-	st.druecken_ende()
+	st.treffen()
+	pruefe(st.geladen and st.nuss_daten.get("angeknackst", false), "Treffer mit schwachem Werkzeug knackst die Nuss an")
+	pruefe(st.phase == "treffer", "Zeiger bleibt nach dem Druck kurz stehen")
+	await warte(Knackstation.NACHHALL + 0.2)
+	pruefe(st.phase == "ruhe", "Danach ist die Station bereit für die nächste Runde")
+	st.pruefung_start(0.0)
+	pruefe(not st.zonen.schwach, "Angeknackste Walnuss schaffen die Hände")
+	st.druck = (st.zonen.s0 + st.zonen.s1) * 0.5
+	st.treffen()
 	pruefe(Game.statistik.perfekt == vorher + 2, "Angeknackste Walnuss perfekt geknackt")
-	# Bruch und Matsch
-	st.lade({"art": "nuss", "nuss": "hasel"})
-	st.druecken_start()
+	# Zu früh, knapp davor, knapp danach, viel zu spät
+	st.lade(hasel)
+	st.pruefung_start(0.0)
+	st.druck = st.zonen.a * 0.5
+	st.treffen()
+	pruefe(st.geladen and not st.nuss_daten.get("angeknackst", false), "Zu früh gedrückt: Nuss bleibt unversehrt liegen")
+	st.pruefung_start(0.0)
+	st.druck = (st.zonen.a + st.zonen.s0) * 0.5
+	st.treffen()
+	pruefe(st.geladen and st.nuss_daten.get("angeknackst", false), "Knapp davor: Riss")
+	st.pruefung_start(0.0)
 	st.druck = (st.zonen.s1 + st.zonen.m) * 0.5
-	st.druecken_ende()
-	pruefe(Game.combo == 0, "Bruch setzt die Combo zurück")
+	st.treffen()
+	pruefe(not st.geladen and Game.combo == 0, "Knapp danach: Bruch setzt die Combo zurück")
+	st.lade(hasel)
+	st.pruefung_start(0.0)
+	st.druck = (st.zonen.m + Knackstation.DRUCK_MAX) * 0.5
+	st.treffen()
+	pruefe(not st.geladen, "Viel zu spät: Matsch")
 	st.lade({"art": "nuss", "nuss": "hasel", "faul": true})
-	st.druecken_start()
-	st.druck = 1.0
-	st.druecken_ende()
+	st.pruefung_start(0.0)
+	st.druck = (st.zonen.s0 + st.zonen.s1) * 0.5
+	st.treffen()
 	pruefe(not st.geladen, "Faule Nuss wird geöffnet")
-	st.lade({"art": "nuss", "nuss": "hasel"})
-	st.druecken_start()
-	await warte(2.0)
-	pruefe(not st.geladen and not st.drueckt, "Zu langes Drücken endet von selbst in Matsch")
+	# Macadamia mit Händen: auch angeknackst nicht zu schaffen
+	st.lade({"art": "nuss", "nuss": "macadamia"})
+	pruefe(st.zonen.zu_hart, "Macadamia ist für bloße Hände zu hart")
+	st.pruefung_start(0.0)
+	st.druck = (st.zonen.s0 + st.zonen.s1) * 0.5
+	st.treffen()
+	pruefe(st.geladen and not st.nuss_daten.get("angeknackst", false), "Zu harte Nuss bleibt zu")
+	st.abbrechen()
+	st.entnehme()
+	# Paranuss: Die Zone springt, während der Zeiger läuft
+	st.lade({"art": "nuss", "nuss": "para"})
+	st.pruefung_start(0.0)
+	var zone_alt: float = st.zonen.s0
+	await warte(0.5)
+	pruefe(not is_equal_approx(st.zonen.s0, zone_alt) and st.zonen.s0 > st.druck, "Zone der Paranuss springt weiter und bleibt vor dem Zeiger")
+	st.abbrechen()
+	pruefe(st.phase == "ruhe" and st.geladen, "Abbrechen lässt die Nuss liegen")
+	st.entnehme()
+	# Gar nicht drücken: nichts passiert, die Probe wartet auf [Leertaste]
+	st.lade(hasel)
+	st.pruefung_start(0.0)
+	await warte(2.2)
+	pruefe(st.geladen and st.phase == "warten" and not st.drueckt, "Runde ohne Druck: Nuss bleibt liegen, Probe wartet")
+	st.treffen()
+	pruefe(st.phase == "vorlauf", "[Leertaste] startet die nächste Runde")
+	st.abbrechen()
+	st.entnehme()
 	await warte(1.0)
 
 
@@ -867,11 +926,21 @@ func _spieler() -> void:
 	pruefe(s.sitzt, "[E] am Knacker: hinsetzen")
 	await warte(1.0)
 	pruefe(welt.station.geladen, "Im Sitzen wird automatisch nachgelegt")
-	_maus(MOUSE_BUTTON_LEFT, true)
-	await warte(0.2)
-	pruefe(welt.station.drueckt, "Linksklick drückt zu")
-	_maus(MOUSE_BUTTON_LEFT, false)
-	pruefe(not welt.station.drueckt, "Loslassen knackt")
+	var laeuft := false
+	var von_selbst := false
+	for i in 80:
+		if welt.station.phase != "ruhe":
+			von_selbst = true
+		if welt.station.phase == "lauf":
+			laeuft = true
+			break
+		if welt.station.phase == "warten":
+			_taste(KEY_SPACE)      # Runde verpasst: [Leertaste] startet die nächste
+		await warte(0.05)
+	pruefe(von_selbst and laeuft, "Im Sitzen beginnt die Trefferprobe von selbst")
+	_taste(KEY_SPACE)
+	await warte(0.05)
+	pruefe(not welt.station.drueckt and welt.station.treffer_zeit > 0.0, "[Leertaste] hält den Zeiger an")
 	await warte(0.3)
 	welt.item_spawnen({"art": "schale", "nuss": "wal"}, welt.station.global_position + Vector3(0.1, 0.05, 0.05), Vector3.ZERO)
 	await warte(0.4)

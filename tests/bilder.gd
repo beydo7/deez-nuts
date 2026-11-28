@@ -34,6 +34,10 @@ func _ready() -> void:
 				var n := berg.abbauen(Vector3(float(gw[0]), 0, float(gw[1])), float(gw[2]), int(gw[3]))
 				Game.nuesse_vom_berg(n)
 			await _warte(6.0)
+		if arg == "--probe":
+			await _trefferprobe_bilder(s)
+			get_tree().quit(0)
+			return
 		if arg.begins_with("--blicke="):
 			print("BLICKE ", arg)
 			for teil in arg.substr(9).split(";"):
@@ -186,17 +190,16 @@ func _ready() -> void:
 	if welt.station.geladen:
 		welt.station.entnehme()
 	welt.station.lade({"art": "nuss", "nuss": "wal", "angeknackst": true})
-	welt.station.druecken_start()
-	s.aktive_station = welt.station
+	welt.station.pruefung_start(0.0)
 	await _warte(0.5)
 	welt.station.set_process(false)
-	welt.station.druck = (welt.station.zonen.s0 + welt.station.zonen.s1) * 0.5
+	welt.station.druck = welt.station.zonen.s0 - 0.07
 	welt.station._visual_aktualisieren(0.0)
 	await _warte(0.3)
 	await _foto("07_knackbank")
+	welt.station.druck = (welt.station.zonen.s0 + welt.station.zonen.s1) * 0.5
 	welt.station.set_process(true)
-	welt.station.druecken_ende()
-	s.aktive_station = null
+	welt.station.treffen()
 	await _warte(0.18)
 	await _foto("08_knack")
 	s.aufstehen()
@@ -235,6 +238,63 @@ func _zielen(s: Spieler, punkt: Vector3) -> void:
 	var r := punkt - kopf
 	s.rotation.y = atan2(-r.x, -r.z)
 	s._blick_x = atan2(r.y, Vector2(r.x, r.z).length())
+
+
+## Nur die Trefferprobe an der Knackbank: --probe
+func _trefferprobe_bilder(s: Spieler) -> void:
+	var st: Knackstation = welt.station
+	Game.maschinen.erase("rutsche")
+	_blick(s, Vector3(0.15, 0.05, -1.45), 0.0, -0.5)
+	await _warte(0.8)
+	s.hinsetzen(st)
+	await _warte(1.0)
+	# Im Sitzen legt der Spieler selbst nach und startet die Probe; für feste Bilder wird hier
+	# die Station angehalten und der Zeiger von Hand gestellt.
+	st.set_process(false)
+	var stelle := func(nuss: Dictionary, phase: String, wo: float, vorlauf := 0.0):
+		if st.geladen:
+			st.abbrechen()
+			st.entnehme()
+		st.lade(nuss)
+		st.pruefung_start(0.0)
+		st.phase = phase
+		st.drueckt = phase == "lauf"
+		st._phase_zeit = vorlauf
+		st.druck = wo
+		st._visual_aktualisieren(0.0)
+	stelle.call({"art": "nuss", "nuss": "hasel"}, "vorlauf", 0.0, Knackstation.VORLAUF * 0.55)
+	await _warte(0.25)
+	await _foto("p1_ring_ploppt_auf")
+	stelle.call({"art": "nuss", "nuss": "hasel"}, "lauf", 0.0)
+	st.druck = st.zonen.a * 0.6
+	await _warte(0.25)
+	await _foto("p2_zeiger_laeuft")
+	Game.werkzeug_aktiv = "metall"
+	Game.werkzeuge["metall"] = 0
+	st._werkzeug_bauen()
+	stelle.call({"art": "nuss", "nuss": "pekan"}, "lauf", 0.0)
+	st.druck = st.zonen.s0 + 0.03
+	st._visual_aktualisieren(0.0)
+	await _warte(0.25)
+	await _foto("p3_schmale_zone_pekan")
+	Game.werkzeug_aktiv = "haende"
+	st._werkzeug_bauen()
+	stelle.call({"art": "nuss", "nuss": "wal"}, "lauf", 0.0)
+	st.druck = st.zonen.a - 0.1
+	await _warte(0.25)
+	await _foto("p4_zu_schwach_gelb")
+	stelle.call({"art": "nuss", "nuss": "hasel"}, "lauf", 0.0)
+	st.druck = (st.zonen.s0 + st.zonen.s1) * 0.5
+	st.set_process(true)
+	st.treffen()
+	await _warte(0.12)
+	await _foto("p5_treffer")
+	await _warte(1.2)
+	st.set_process(false)
+	stelle.call({"art": "nuss", "nuss": "hasel"}, "warten", 0.0)
+	st.drueckt = false
+	await _warte(0.25)
+	await _foto("p6_wartet")
 
 
 func _blick(s: Spieler, pos: Vector3, dreh_y: float, neigung: float) -> void:

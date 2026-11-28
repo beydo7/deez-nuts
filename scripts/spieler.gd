@@ -138,20 +138,16 @@ func _eingabe_sitzend(event: InputEvent) -> void:
 	if event.is_action_pressed("benutzen") or event.is_action_pressed("pause") or event.is_action_pressed("zurueck"):
 		get_viewport().set_input_as_handled()
 		aufstehen()
-	elif event.is_action_pressed("druecken"):
+	elif event.is_action_pressed("treffen"):
+		# [Leertaste]: Zeiger anhalten. Liegt keine Nuss drin, wird nachgelegt.
+		get_viewport().set_input_as_handled()
 		if st.geladen:
-			if Game.einstellungen.tippen and st.drueckt:
-				st.druecken_ende()
-				aktive_station = null
-			else:
-				st.druecken_start()
-				aktive_station = st
+			st.treffen()
 		else:
 			_nachlegen()
-	elif event.is_action_released("druecken"):
-		if not Game.einstellungen.tippen and aktive_station:
-			aktive_station.druecken_ende()
-			aktive_station = null
+	elif event.is_action_pressed("druecken"):
+		if not st.geladen:
+			_nachlegen()
 	elif event.is_action_pressed("rechts_klick") or event.is_action_pressed("wischen"):
 		if welt.has_method("eichhoernchen_am_tisch") and welt.eichhoernchen_am_tisch():
 			welt.eichhoernchen_verjagen()
@@ -187,9 +183,9 @@ func hinsetzen(st: Knackstation) -> void:
 func aufstehen() -> void:
 	if not sitzt:
 		return
-	if aktive_station:
-		aktive_station.druecken_ende()
-		aktive_station = null
+	if sitz_station:
+		sitz_station.abbrechen()
+	aktive_station = null
 	sitzt = false
 	_blend_ziel = 0.0
 	# Blick wieder nach vorn auf den Tisch
@@ -275,11 +271,6 @@ func _physics_process(delta: float) -> void:
 		_berg_zielen()
 	_halten(delta)
 	_sammeln(delta)
-	# Station loslassen, wenn man im Stehen wegschaut
-	if not sitzt and aktive_station and aktive_station.drueckt:
-		if not _schaut_auf_station(aktive_station):
-			aktive_station.druecken_ende()
-			aktive_station = null
 
 
 func _process(delta: float) -> void:
@@ -293,7 +284,8 @@ func _process(delta: float) -> void:
 	_trauma = max(0.0, _trauma - delta * 1.8)
 	var druck_zittern := 0.0
 	if sitzt and sitz_station and sitz_station.drueckt:
-		druck_zittern = clampf(sitz_station.druck, 0.0, 1.0) * 0.12
+		# Erst ab der Riss-Zone wackelt das Bild leicht, damit der Zeiger gut lesbar bleibt
+		druck_zittern = clampf((sitz_station.druck - float(sitz_station.zonen.get("a", 0.4))) / 0.5, 0.0, 1.0) * 0.07
 	var w := _trauma * _trauma + druck_zittern * druck_zittern
 	if w > 0.0001:
 		var n := _zeit * 40.0
@@ -306,6 +298,9 @@ func _process(delta: float) -> void:
 	# Automatisch nachlegen, wenn man sitzt
 	if sitzt and sitz_station and not sitz_station.geladen and _nachlege_pause <= 0.0:
 		_nachlegen()
+	# Liegt eine Nuss im Knacker, beginnt die Trefferprobe von selbst (wie ein Skill-Check)
+	if sitzt and sitz_station and sitz_station.geladen and sitz_station.phase == "ruhe" and not gesperrt and _blend >= 0.95:
+		sitz_station.pruefung_start()
 	_fp_hand.visible = gehalten != null and not sitzt and _blend < 0.05
 	geraet.visible = gehalten == null and not sitzt and _blend < 0.05
 	if geraet.visible:
@@ -710,11 +705,7 @@ func _druecken_an() -> void:
 
 
 func _druecken_aus() -> void:
-	if Game.einstellungen.tippen:
-		return
-	if aktive_station:
-		aktive_station.druecken_ende()
-		aktive_station = null
+	pass
 
 
 func blickt_auf_station() -> Knackstation:

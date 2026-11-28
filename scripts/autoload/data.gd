@@ -13,7 +13,7 @@ const L_INTERAKT := 16
 const L_TIER := 32
 
 # --- Nüsse -----------------------------------------------------------------
-# haerte = Mindestkraft, sweet = Breite des Sweet Spots (Anteil der Druckskala),
+# haerte = Mindestkraft, sweet = Breite der Trefferzone (Anteil an einer Zeigerrunde von 1,3),
 # wert = Münzen je ganzer Kernhälfte, groesse = Radius in Metern (spielfreundlich vergrößert)
 const NUESSE := {
 	"hasel": {"name": "Haselnuss", "haerte": 1.0, "sweet": 0.30, "wert": 1.0, "groesse": 0.034, "muster": 0, "falten": 0.0,
@@ -124,7 +124,7 @@ const WERKZEUGE := [
 	{"id": "metall", "name": "Metall-Hebelknacker", "kraft": 6.0, "zeit": 0.8, "sweet": 0.03, "preis": 1200, "aera": 1,
 		"text": "Verchromter Hebel: schneller und etwas gnädiger."},
 	{"id": "hammer", "name": "Hammer", "kraft": 10.0, "zeit": 0.45, "sweet": -0.05, "preis": 9000, "aera": 2,
-		"text": "Halten zum Ausholen, loslassen zum Zuschlagen. Schnell, aber ungenau."},
+		"text": "Holt blitzschnell aus: Der Zeiger rast, die Trefferzone ist kleiner."},
 	{"id": "schraubstock", "name": "Schraubstock", "kraft": 14.0, "zeit": 1.6, "sweet": 0.08, "preis": 40000, "aera": 3,
 		"text": "Kurbel drehen: langsam, sehr präzise. Schafft Macadamia."},
 ]
@@ -184,7 +184,7 @@ const ZIELE := [
 	{"id": "berg", "text": "Geh raus zum Nussberg", "hilfe": "Die Tür ist rechts vom Fenster", "lohn": 0},
 	{"id": "voll", "text": "Füll deine Taschen", "hilfe": "[Linksklick] halten, während du auf den Berg schaust", "lohn": 5},
 	{"id": "abliefern", "text": "Bring die Nüsse zum Trichter", "hilfe": "Lauf in den gelben Kreis an der Hütte", "lohn": 5},
-	{"id": "knacken", "text": "Knack 3 Nüsse perfekt", "hilfe": "Drinnen an die Knackbank [E], [R] holt Nüsse aus dem Lager", "lohn": 10, "anzahl": 3},
+	{"id": "knacken", "text": "Knack 3 Nüsse perfekt", "hilfe": "Drinnen an die Knackbank [E], [R] holt Nüsse. [Leertaste], wenn der Zeiger im hellen Bereich ist", "lohn": 10, "anzahl": 3},
 	{"id": "loeffel", "text": "Kauf den Holzlöffel", "hilfe": "Am Bestellbrett neben dem Trichter [E] oder am Telefon", "lohn": 0},
 	{"id": "beutel", "text": "Kauf den Stoffbeutel", "hilfe": "Mehr tragen = weniger laufen", "lohn": 0},
 	{"id": "skill", "text": "Lern deinen ersten Skill", "hilfe": "[Tab] öffnet Opas Notizbuch", "lohn": 0},
@@ -206,8 +206,8 @@ const SKILL_PFADE := [
 		"werte": [["praemie", 0.1, "Ablieferprämie +10 %"], ["preise", 0.05, "Kernpreise +5 %"], ["lager", 0.15, "Lager +15 %"]],
 		"schluessel": [["feilschen", "Feilschen", "Alle Preise +15 %"], ["stammkunden", "Stammkunden", "4. Bestellung, +25 % Belohnung"], ["nussbaron", "Nussbaron", "1 % Zinsen pro Minute (max. 5.000)"]]},
 	{"id": "knacken", "name": "Knacken", "farbe": Color(0.95, 0.45, 0.35), "basis": 30.0,
-		"werte": [["sweet", 0.01, "Sweet Spot +1 %"], ["kernwert", 0.08, "Handknack +8 % Wert"], ["combo", 2.0, "Combo-Limit +2"]],
-		"schluessel": [["ruhige_hand", "Ruhige Hand", "Sweet Spot +6 %"], ["rhythmus", "Rhythmusgefühl", "Combo-Limit +10"], ["meisterknack", "Meisterknack", "Handknack zählt für Bestellungen dreifach"]]},
+		"werte": [["sweet", 0.01, "Trefferzone +1 %"], ["kernwert", 0.08, "Handknack +8 % Wert"], ["combo", 2.0, "Combo-Limit +2"]],
+		"schluessel": [["ruhige_hand", "Ruhige Hand", "Trefferzone +6 %"], ["rhythmus", "Rhythmusgefühl", "Combo-Limit +10"], ["meisterknack", "Meisterknack", "Handknack zählt für Bestellungen dreifach"]]},
 	{"id": "maschinen", "name": "Maschinen", "farbe": Color(0.5, 0.7, 0.95), "basis": 60.0,
 		"werte": [["walze_tempo", 0.1, "Walze +10 %"], ["walze_praezision", 0.02, "Walze +2 % Präzision"], ["rutsche", 0.1, "Rutsche +10 %"]],
 		"schluessel": [["gut_geoelt", "Gut geölt", "Alle Maschinen +25 %"], ["baumeister", "Baumeister", "Maschinen und Posten 30 % günstiger"], ["selbstlaeufer", "Selbstläufer", "Walze +15 % Präzision"]]},

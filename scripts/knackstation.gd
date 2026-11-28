@@ -1,18 +1,30 @@
 class_name Knackstation
 extends Node3D
-## Der Nussknacker auf dem Tisch. Maustaste halten = zudrücken, loslassen = knacken.
+## Der Nussknacker auf dem Tisch. Geknackt wird mit einer Trefferprobe: Ein Zeiger läuft einmal
+## im Kreis, [Leertaste] im hellen Bereich knackt die Nuss perfekt. Der Zeiger ist zugleich der
+## Druck des Werkzeugs: knapp davor gibt es nur einen Riss, knapp danach Bruch, viel zu spät Matsch.
 ## Kein Balken im Spiel: Hebel, Hände, Knarzen, wachsende Risse und Zittern zeigen den Druck.
 
 signal geknackt(ergebnis: String, pos: Vector3)
 
-const DRUCK_MAX := 1.3
+const DRUCK_MAX := 1.3            # eine volle Runde des Zeigers
 const BRETT_H := 0.025
+const VORLAUF := 0.4              # Sekunden zwischen Aufploppen des Rings und Loslaufen des Zeigers
+const NACHHALL := 0.4             # so lange bleibt der Zeiger nach dem Druck stehen
+const RISS_BREITE := 0.18         # Bereich vor der Trefferzone: Riss
+const BRUCH_BREITE := 0.2         # Bereich nach der Trefferzone: Bruch
 
 var geladen := false
 var nuss_daten := {}
-var druck := 0.0
-var drueckt := false
+var druck := 0.0                  # Stand des Zeigers, 0 bis DRUCK_MAX
+var drueckt := false              # true, solange der Zeiger läuft
 var zonen := {}
+var phase := "ruhe"               # ruhe | vorlauf | lauf | treffer | warten
+var treffer_art := ""             # Ergebnis des letzten Drucks, für die Anzeige
+var treffer_zeit := 0.0           # klingt nach dem Druck ab
+var treffer_druck := 0.0
+var treffer_zonen := {}           # Zonen zum Zeitpunkt des Drucks (die nächste Nuss würfelt neu)
+var sprung_zeit := 0.0            # klingt ab, wenn die Zone gerade gesprungen ist
 var koerper: Interaktiv
 var haende_sichtbar := false
 var letzte_nuss := "wal"
@@ -22,6 +34,8 @@ var _knister_timer := 0.0
 var _riss_gemeldet := false
 var _schwach_gemeldet := false
 var _sweet_gemeldet := false
+var _phase_zeit := 0.0
+var _sprung_offen := false
 var _sitz := Vector3(0, 0.07, 0)
 var _achse := Vector3.UP
 var _unterlage := BRETT_H
@@ -229,6 +243,7 @@ func lade(daten: Dictionary) -> bool:
 	druck = 0.0
 	_anzeige_druck = 0.0
 	drueckt = false
+	phase = "ruhe"
 	_zonen_berechnen()
 	_nuss_bauen()
 	Sfx.spiele("ablegen", -8.0, 1.4)
@@ -239,6 +254,8 @@ func entnehme() -> Dictionary:
 	if not geladen or drueckt:
 		return {}
 	geladen = false
+	phase = "ruhe"
+	druck = 0.0
 	var d := nuss_daten
 	nuss_daten = {}
 	if _nuss_vis:
@@ -248,22 +265,54 @@ func entnehme() -> Dictionary:
 	return d
 
 
+## Legt die Trefferzone für die nächste Runde fest. Sie liegt jedes Mal woanders, damit man
+## hinschauen muss und nicht nach Gefühl drückt. Die Breite kommt wie bisher aus Nuss und Werkzeug.
 func _zonen_berechnen() -> void:
 	var info: Dictionary = Data.NUESSE[nuss_daten.nuss]
 	var wz := Game.werkzeug_werte()
+	var angeknackst: bool = nuss_daten.get("angeknackst", false)
 	var w: float = clampf(float(info.sweet) + float(wz.sweet), 0.05, 0.5)
-	var mitte := 0.62
-	if nuss_daten.get("angeknackst", false):
-		mitte -= 0.15
-	if info.get("springt", false):
-		mitte += randf_range(-0.12, 0.12)
-	var s0 := mitte - w * 0.5
-	var s1 := mitte + w * 0.5
-	var haerte: float = float(info.haerte) * (0.5 if nuss_daten.get("angeknackst", false) else 1.0)
-	var kappe := DRUCK_MAX
-	if float(wz.kraft) < haerte:
-		kappe = s0 - 0.015
-	zonen = {"a": max(0.08, s0 - 0.18), "s0": s0, "s1": s1, "m": min(1.22, s1 + 0.2), "kappe": kappe, "zeit": float(wz.zeit)}
+	if angeknackst:
+		w = min(0.5, w * 1.2)      # eine angeknackste Nuss verzeiht etwas mehr
+	var haerte: float = float(info.haerte) * (0.5 if angeknackst else 1.0)
+	zonen = {"w": w, "zeit": float(wz.zeit),
+		"schwach": float(wz.kraft) < haerte,                       # Werkzeug schafft nur einen Riss
+		"zu_hart": float(wz.kraft) < float(info.haerte) * 0.5}     # auch angeknackst nicht zu schaffen
+	_zone_setzen(randf_range(_mitte_min(w), _mitte_max(w)))
+	_sprung_offen = bool(info.get("springt", false))
+
+
+func _mitte_min(w: float) -> float:
+	return 0.2 + RISS_BREITE + w * 0.5
+
+
+func _mitte_max(w: float) -> float:
+	return max(_mitte_min(w), DRUCK_MAX - 0.05 - BRUCH_BREITE - w * 0.5)
+
+
+func _zone_setzen(mitte: float) -> void:
+	var w: float = zonen.w
+	zonen["s0"] = mitte - w * 0.5
+	zonen["s1"] = mitte + w * 0.5
+	zonen["a"] = zonen.s0 - RISS_BREITE
+	zonen["m"] = zonen.s1 + BRUCH_BREITE
+
+
+## Springende Nüsse (Paranuss): Die Zone hüpft einmal weiter, während der Zeiger schon läuft.
+func _zone_springen() -> void:
+	_sprung_offen = false
+	var w: float = zonen.w
+	var unten: float = max(_mitte_min(w), druck + 0.3 + w * 0.5)
+	var oben := _mitte_max(w)
+	if unten >= oben:
+		return
+	var alt: float = (zonen.s0 + zonen.s1) * 0.5
+	var neu := randf_range(unten, oben)
+	if absf(neu - alt) < 0.1:
+		neu = oben if alt < (unten + oben) * 0.5 else unten
+	_zone_setzen(neu)
+	sprung_zeit = 0.3
+	Sfx.spiele("plopp", -6.0, 1.5)
 
 
 func _nuss_bauen() -> void:
@@ -283,56 +332,103 @@ func _nuss_bauen() -> void:
 
 
 # =============================================================================
-# Drücken
+# Trefferprobe
 # =============================================================================
-func druecken_start() -> void:
-	if not geladen or drueckt:
+## Zeigt den Ring und lässt nach kurzem Vorlauf den Zeiger loslaufen.
+func pruefung_start(vorlauf := VORLAUF) -> void:
+	if not geladen or phase == "vorlauf" or phase == "lauf":
 		return
-	drueckt = true
+	_zonen_berechnen()
 	druck = 0.0
+	drueckt = false
 	_knarz_timer = 0.0
 	_riss_gemeldet = false
 	_schwach_gemeldet = false
 	_sweet_gemeldet = false
+	if vorlauf <= 0.0:
+		phase = "lauf"
+		drueckt = true
+	else:
+		phase = "vorlauf"
+		_phase_zeit = vorlauf
+		Sfx.spiele("plopp", -9.0, 1.25)
 
 
-func druecken_ende() -> void:
-	if not drueckt:
+## [Leertaste]: Der Zeiger bleibt stehen, die Nuss wird nach seinem Stand aufgelöst.
+func treffen() -> void:
+	if phase == "warten":
+		pruefung_start()
+		return
+	if phase != "lauf":
 		return
 	drueckt = false
 	_aufloesen()
 
 
+## Bricht die Probe ohne Folgen ab (aufstehen, Menü).
+func abbrechen() -> void:
+	if phase == "ruhe":
+		return
+	phase = "ruhe"
+	drueckt = false
+	druck = 0.0
+	treffer_zeit = 0.0
+
+
+## 0 = Ring ploppt gerade auf, 1 = Zeiger läuft los.
+func vorlauf_anteil() -> float:
+	if phase != "vorlauf":
+		return 1.0
+	return clampf(1.0 - _phase_zeit / VORLAUF, 0.0, 1.0)
+
+
+func zeigt_ring() -> bool:
+	return (geladen and phase != "ruhe") or treffer_zeit > 0.0
+
+
 func _process(delta: float) -> void:
-	if drueckt:
-		var vorher := druck
-		druck = min(druck + delta / max(0.05, zonen.zeit), zonen.kappe)
-		_knarz_timer -= delta
-		if _knarz_timer <= 0.0:
-			_knarz_timer = 0.12 - druck * 0.05
-			if Game.werkzeug_aktiv != "hammer":
-				Sfx.spiele("knarzen", -14.0 + druck * 7.0, 0.7 + druck * 0.8, 0.05)
-			else:
-				Sfx.spiele("ausholen", -14.0 + druck * 5.0, 0.8 + druck * 0.5, 0.03)
-		if vorher < zonen.a and druck >= zonen.a and not _riss_gemeldet:
-			_riss_gemeldet = true
-			Sfx.spiele("knack_riss", -8.0, 1.3)
-		if druck >= zonen.s0 and druck <= zonen.s1:
-			_knister_timer -= delta
-			if _knister_timer <= 0.0:
-				_knister_timer = 0.07
-				Sfx.spiele("knistern", -9.0, 1.0 + (druck - zonen.s0) * 1.5, 0.15)
-			if not _sweet_gemeldet:
-				_sweet_gemeldet = true
-		if druck >= zonen.kappe - 0.0001 and zonen.kappe < DRUCK_MAX and not _schwach_gemeldet:
-			_schwach_gemeldet = true
-			Game.knack_ergebnis.emit("schwach", "Zu schwach! Erst anknacksen, dann nochmal.")
-			Sfx.spiele("fehler", -10.0, 0.8)
-		if druck >= DRUCK_MAX - 0.0001:
-			drueckt = false
-			_aufloesen()
-	elif druck > 0.0:
-		druck = max(0.0, druck - delta * 3.0)
+	treffer_zeit = max(0.0, treffer_zeit - delta)
+	sprung_zeit = max(0.0, sprung_zeit - delta)
+	match phase:
+		"vorlauf":
+			_phase_zeit -= delta
+			if _phase_zeit <= 0.0:
+				phase = "lauf"
+				drueckt = true
+		"lauf":
+			var vorher := druck
+			druck = min(druck + delta / max(0.05, zonen.zeit), DRUCK_MAX)
+			_knarz_timer -= delta
+			if _knarz_timer <= 0.0:
+				_knarz_timer = 0.12 - min(druck, 1.0) * 0.05
+				if Game.werkzeug_aktiv != "hammer":
+					Sfx.spiele("knarzen", -14.0 + druck * 7.0, 0.7 + druck * 0.8, 0.05)
+				else:
+					Sfx.spiele("ausholen", -14.0 + druck * 5.0, 0.8 + druck * 0.5, 0.03)
+			if _sprung_offen and druck >= 0.16:
+				_zone_springen()
+			if vorher < zonen.a and druck >= zonen.a and not _riss_gemeldet and not zonen.schwach:
+				_riss_gemeldet = true
+				Sfx.spiele("knack_riss", -12.0, 1.3)
+			if druck >= zonen.s0 and druck <= zonen.s1:
+				_knister_timer -= delta
+				if _knister_timer <= 0.0:
+					_knister_timer = 0.07
+					Sfx.spiele("knistern", -9.0, 1.0 + (druck - zonen.s0) * 1.5, 0.15)
+			if druck >= DRUCK_MAX - 0.0001:
+				# Runde vorbei, ohne dass gedrückt wurde: nichts passiert, die Probe wartet auf [Leertaste]
+				drueckt = false
+				phase = "warten"
+				treffer_art = "verpasst"
+				Game.knack_ergebnis.emit("frueh", "Verpasst – [Leertaste] für die nächste Runde")
+		"treffer":
+			_phase_zeit -= delta
+			if _phase_zeit <= 0.0:
+				phase = "ruhe"
+				druck = 0.0
+		_:
+			if druck > 0.0:
+				druck = max(0.0, druck - delta * 3.0)
 	_visual_aktualisieren(delta)
 
 
@@ -358,6 +454,8 @@ func _visual_aktualisieren(delta: float) -> void:
 	var zittern := 0.0
 	if drueckt and zonen.has("s0") and druck >= zonen.s0:
 		zittern = 1.0 if druck <= zonen.s1 else 0.6
+	elif phase == "treffer":
+		zittern = 0.4
 	var wack := Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * 0.0018 * zittern
 	# Hände (ohne Werkzeug)
 	if Game.werkzeug_aktiv == "haende":
@@ -440,25 +538,52 @@ func _aufloesen() -> void:
 	var info: Dictionary = Data.NUESSE[d.nuss]
 	var welt := get_tree().current_scene
 	var pos := sitz_global()
+	treffer_art = zone
+	treffer_druck = druck
+	treffer_zonen = zonen.duplicate()
+	treffer_zeit = NACHHALL
+	# Solange die Nuss liegen bleibt, steht der Zeiger kurz still, dann beginnt die nächste Runde
+	phase = "treffer"
+	_phase_zeit = NACHHALL
 	if Game.werkzeug_aktiv == "hammer":
 		_schlag = 1.0
 		Sfx.spiele("hammer", -2.0)
+	if zonen.schwach:
+		# Das Werkzeug ist zu schwach für diese Nuss: Ein Treffer knackst sie nur an
+		if zone == "riss" or zone == "perfekt":
+			if zonen.zu_hart:
+				treffer_art = "schwach"
+				Sfx.spiele("fehler", -10.0, 0.8)
+				Game.knack_ergebnis.emit("schwach", "Zu hart! Dafür brauchst du ein stärkeres Werkzeug.")
+				geknackt.emit("frueh", pos)
+			else:
+				treffer_art = "riss"
+				nuss_daten.angeknackst = true
+				Sfx.spiele("knack_riss", -2.0)
+				Game.knack_ergebnis.emit("riss", "Angeknackst! Noch ein Treffer")
+				geknackt.emit("riss", pos)
+		else:
+			treffer_art = "frueh"
+			Game.knack_ergebnis.emit("frueh", "Daneben")
+			geknackt.emit("frueh", pos)
+		return
 	if zone == "frueh":
-		Game.knack_ergebnis.emit("frueh", "Zu früh losgelassen")
+		Game.knack_ergebnis.emit("frueh", "Zu früh")
 		geknackt.emit("frueh", pos)
 		return
 	if zone == "riss":
 		if not d.get("angeknackst", false):
 			nuss_daten.angeknackst = true
-			_zonen_berechnen()
 			Sfx.spiele("knack_riss", -2.0)
-			Game.knack_ergebnis.emit("riss", "Riss! Nochmal drücken")
+			Game.knack_ergebnis.emit("riss", "Knapp davor: Riss! Noch ein Treffer")
 			geknackt.emit("riss", pos)
 		else:
-			Game.knack_ergebnis.emit("frueh", "Noch zu wenig")
+			treffer_art = "frueh"
+			Game.knack_ergebnis.emit("frueh", "Knapp davor")
 			geknackt.emit("frueh", pos)
 		return
 	# Ab hier ist die Nuss offen
+	phase = "ruhe"
 	geladen = false
 	nuss_daten = {}
 	if _nuss_vis:
@@ -502,7 +627,7 @@ func _aufloesen() -> void:
 				for i in 3:
 					teile.append({"art": "bruch", "nuss": d.nuss, "wert": float(info.wert) * 0.2})
 				Sfx.spiele("knirschen")
-				Game.knack_ergebnis.emit("bruch", "Bruch – zu fest")
+				Game.knack_ergebnis.emit("bruch", "Zu spät: Bruch")
 			"matsch":
 				Game.melde_knack(d.nuss, "matsch", true)
 				Sfx.spiele("matsch")
