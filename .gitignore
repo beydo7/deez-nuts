@@ -29,3 +29,6 @@ export/
 *.translation
 export_presets.cfg
 logs/
+
+# Bilder in docs/ sind keine Spielinhalte (docs/.gdignore), Importreste nicht einchecken
+docs/**/*.import
