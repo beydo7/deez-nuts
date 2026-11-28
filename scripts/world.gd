@@ -122,8 +122,13 @@ func _ready() -> void:
 	aeren = Aeren.new(self)
 	add_child(aeren)
 	Sfx.musik_starten()
-	if Game.erster_start:
+	welt_einstellungen()
+	if not Game.titel_ueberspringen:
+		add_child(Titel.new(self))
+	elif Game.erster_start:
 		call_deferred("_menue", menues.zeige_intro)
+	if not Game.selbsttest:
+		Game.titel_ueberspringen = false
 	if Game.selbsttest:
 		var t := Node.new()
 		var bilder := false
@@ -132,6 +137,16 @@ func _ready() -> void:
 				bilder = true
 		t.set_script(load("res://tests/bilder.gd" if bilder else "res://tests/selbsttest.gd"))
 		add_child(t)
+
+
+## Der Teil der Einstellungen, der an dieser Welt hängt (Licht, Schatten, Helligkeit).
+func welt_einstellungen() -> void:
+	var q := clampi(int(Game.einstellungen.qualitaet), 0, 2)
+	umwelt.ssao_enabled = q >= 1
+	umwelt.glow_enabled = q >= 1
+	umwelt.adjustment_enabled = true
+	umwelt.adjustment_brightness = clampf(float(Game.einstellungen.helligkeit), 0.5, 1.5)
+	sonne.directional_shadow_max_distance = [26.0, 36.0, 45.0][q]
 
 
 func _menue(oeffnen: Callable) -> void:

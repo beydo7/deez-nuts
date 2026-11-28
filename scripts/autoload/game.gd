@@ -68,12 +68,44 @@ var spielzeit: float = 0.0
 var ziel_index: int = 0
 var ziel_zaehler: int = 0
 
-var einstellungen := {
-	"empfindlichkeit": 0.25,
+## Einstellungen gelten für alle Spielstände und liegen in einer eigenen Datei.
+const EINSTELLUNGEN_STANDARD := {
+	# Bild
+	"anzeige": 1,               # 0 Fenster, 1 randloses Vollbild, 2 Vollbild
+	"vsync": true,
+	"bildrate": 0,              # 0 = unbegrenzt
+	"qualitaet": 2,             # 0 niedrig, 1 mittel, 2 hoch
+	"renderskala": 1.0,
+	"helligkeit": 1.0,
+	"sichtfeld": 72.0,
+	# Ton
 	"lautstaerke": 0.8,
 	"musik": 0.6,
+	"stumm_ohne_fokus": true,
+	# Steuerung
+	"empfindlichkeit": 0.25,
+	"y_umkehren": false,
+	"tasten": {},               # Aktion -> Tastencode, nur umbelegte
+	# Spiel
+	"wackeln": 1.0,
+	"tastenhilfe": true,
+	"ui_groesse": 1.0,
+	"zeiger_gemuetlich": false,
 	"zeit_fest": false,
+	"slot": 1,
 }
+const EINSTELLUNGEN_PFAD := "user://einstellungen.json"
+const SLOTS := 3
+## Aktionen, die sich umbelegen lassen, mit Anzeigenamen (Reihenfolge wie im Menü).
+const TASTEN_AKTIONEN := [["vor", "Vorwärts"], ["zurueck", "Rückwärts"], ["links", "Links"], ["rechts", "Rechts"],
+	["springen", "Springen"], ["rennen", "Rennen"], ["benutzen", "Benutzen / hinsetzen"], ["treffen", "Trefferprobe"],
+	["hebel", "Nüsse aus dem Lager"], ["wischen", "Schalen wischen"], ["fallenlassen", "Fallen lassen"],
+	["werkzeug_wechseln", "Sammelwerkzeug wechseln"], ["laden", "Laden"], ["talente", "Skills"]]
+
+var einstellungen := EINSTELLUNGEN_STANDARD.duplicate(true)
+var slot := 1
+var titel_ueberspringen := false      # nach einem Wechsel des Spielstands direkt ins Spiel
+var _standard_tasten := {}
 
 var _speicher_timer := 0.0
 var _hitstop_ende := 0
@@ -91,11 +123,202 @@ func _ready() -> void:
 		for pfad in [SPEICHER_PFAD, BERG_PFAD]:
 			if FileAccess.file_exists(pfad):
 				DirAccess.remove_absolute(ProjectSettings.globalize_path(pfad))
+		titel_ueberspringen = true
+	else:
+		einstellungen_laden()
+		_alten_spielstand_uebernehmen()
+		_slot_setzen(int(einstellungen.slot))
+	einstellungen_anwenden()
 	laden()
 	_pruefe_aera(false)
 	if bestellungen.is_empty():
 		_bestellungen_auffuellen()
-	AudioServer.set_bus_volume_db(0, linear_to_db(max(0.001, float(einstellungen.lautstaerke))))
+
+
+# --- Einstellungen ---------------------------------------------------------------
+func einstellungen_laden() -> void:
+	if not FileAccess.file_exists(EINSTELLUNGEN_PFAD):
+		return
+	var d = JSON.parse_string(FileAccess.get_file_as_string(EINSTELLUNGEN_PFAD))
+	if not (d is Dictionary):
+		return
+	for k in EINSTELLUNGEN_STANDARD:
+		if d.has(k) and typeof(d[k]) in [TYPE_FLOAT, TYPE_INT, TYPE_BOOL, TYPE_DICTIONARY]:
+			var w = d[k]
+			var muster = EINSTELLUNGEN_STANDARD[k]
+			if muster is bool:
+				w = bool(w)
+			elif muster is int:
+				w = int(w)
+			elif muster is float:
+				w = float(w)
+			einstellungen[k] = w
+
+
+func einstellungen_speichern() -> void:
+	if selbsttest:
+		return
+	einstellungen.slot = slot
+	var f := FileAccess.open(EINSTELLUNGEN_PFAD, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(einstellungen, "\t"))
+		f.close()
+
+
+func einstellungen_standard(nur: Array = []) -> void:
+	for k in EINSTELLUNGEN_STANDARD:
+		if k != "slot" and (nur.is_empty() or k in nur):
+			einstellungen[k] = EINSTELLUNGEN_STANDARD[k].duplicate(true) if EINSTELLUNGEN_STANDARD[k] is Dictionary else EINSTELLUNGEN_STANDARD[k]
+	einstellungen_anwenden()
+
+
+## Setzt alles um, was sich sofort umsetzen lässt. Die Welt holt sich ihren Teil über `welt_einstellungen`.
+func einstellungen_anwenden() -> void:
+	var e := einstellungen
+	AudioServer.set_bus_volume_db(0, linear_to_db(max(0.001, float(e.lautstaerke))))
+	var klang := get_node_or_null("/root/Sfx")
+	if klang and klang.get("_musik") != null:
+		klang.musik_lautstaerke(float(e.musik))
+	_tasten_anwenden()
+	if selbsttest or DisplayServer.get_name() == "headless":
+		return
+	var modus := [DisplayServer.WINDOW_MODE_WINDOWED, DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN]
+	var ziel: int = modus[clampi(int(e.anzeige), 0, 2)]
+	if DisplayServer.window_get_mode() != ziel and not (ziel == DisplayServer.WINDOW_MODE_WINDOWED and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MAXIMIZED):
+		DisplayServer.window_set_mode(ziel)
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if bool(e.vsync) else DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = int(e.bildrate)
+	var fenster := get_tree().root
+	fenster.scaling_3d_scale = clampf(float(e.renderskala), 0.5, 1.0)
+	fenster.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][clampi(int(e.qualitaet), 0, 2)]
+	fenster.content_scale_factor = clampf(float(e.ui_groesse), 0.8, 1.3)
+	RenderingServer.directional_shadow_atlas_set_size([1024, 2048, 4096][clampi(int(e.qualitaet), 0, 2)], true)
+	var welt := get_tree().current_scene
+	if welt and welt.has_method("welt_einstellungen"):
+		welt.welt_einstellungen()
+
+
+func _tasten_anwenden() -> void:
+	var belegt: Dictionary = einstellungen.tasten
+	for paar in TASTEN_AKTIONEN:
+		var aktion: String = paar[0]
+		if not _standard_tasten.has(aktion):
+			continue
+		for ev in InputMap.action_get_events(aktion):
+			if ev is InputEventKey:
+				InputMap.action_erase_event(aktion, ev)
+		var codes: Array = [int(belegt[aktion])] if belegt.has(aktion) else _standard_tasten[aktion]
+		for k in codes:
+			var ev := InputEventKey.new()
+			ev.physical_keycode = k
+			InputMap.action_add_event(aktion, ev)
+
+
+func taste_von(aktion: String) -> int:
+	if einstellungen.tasten.has(aktion):
+		return int(einstellungen.tasten[aktion])
+	var liste: Array = _standard_tasten.get(aktion, [])
+	return int(liste[0]) if not liste.is_empty() else 0
+
+
+static func tastentext(code: int) -> String:
+	match code:
+		KEY_SPACE: return "Leertaste"
+		KEY_SHIFT: return "Shift"
+		KEY_CTRL: return "Strg"
+		KEY_ALT: return "Alt"
+		KEY_TAB: return "Tab"
+		KEY_ENTER: return "Enter"
+		KEY_ESCAPE: return "Esc"
+		KEY_UP: return "Pfeil hoch"
+		KEY_DOWN: return "Pfeil runter"
+		KEY_LEFT: return "Pfeil links"
+		KEY_RIGHT: return "Pfeil rechts"
+	return OS.get_keycode_string(code)
+
+
+## Belegt eine Aktion neu. Hatte eine andere Aktion die Taste, bekommt sie die alte Taste (Tausch).
+func taste_belegen(aktion: String, code: int) -> void:
+	var alt := taste_von(aktion)
+	for paar in TASTEN_AKTIONEN:
+		var andere: String = paar[0]
+		# Springen und Trefferprobe dürfen sich die Leertaste teilen: Man sitzt oder man läuft
+		var teilen := (aktion in ["springen", "treffen"]) and (andere in ["springen", "treffen"])
+		if andere != aktion and taste_von(andere) == code and not teilen:
+			einstellungen.tasten[andere] = alt
+	einstellungen.tasten[aktion] = code
+	_tasten_anwenden()
+
+
+## Hinweise im Spiel nennen die Standardtaste ("E", "Leertaste"). Ist sie umbelegt, steht hier die neue.
+func tastenname_fuer(text: String) -> String:
+	if einstellungen.tasten.is_empty():
+		return text
+	for aktion in einstellungen.tasten:
+		var liste: Array = _standard_tasten.get(aktion, [])
+		if not liste.is_empty() and tastentext(int(liste[0])) == text:
+			if text == "Leertaste" and aktion == "springen" and not einstellungen.tasten.has("treffen"):
+				continue
+			return tastentext(int(einstellungen.tasten[aktion]))
+	return text
+
+
+# --- Spielstände (Gläser) -------------------------------------------------------------
+func _slot_setzen(n: int) -> void:
+	slot = clampi(n, 1, SLOTS)
+	SPEICHER_PFAD = "user://glas_%d.json" % slot
+	BERG_PFAD = "user://glas_%d_berg.dat" % slot
+
+
+## Der Spielstand aus der Zeit vor den Gläsern wandert ins erste Glas.
+func _alten_spielstand_uebernehmen() -> void:
+	if FileAccess.file_exists("user://spielstand.json") and not FileAccess.file_exists("user://glas_1.json"):
+		DirAccess.rename_absolute(ProjectSettings.globalize_path("user://spielstand.json"), ProjectSettings.globalize_path("user://glas_1.json"))
+		if FileAccess.file_exists("user://berg.dat"):
+			DirAccess.rename_absolute(ProjectSettings.globalize_path("user://berg.dat"), ProjectSettings.globalize_path("user://glas_1_berg.dat"))
+
+
+## Kurzinfo zu einem Glas, ohne es zu laden. {} = leer.
+func slot_info(n: int) -> Dictionary:
+	if n == slot and not selbsttest and (genommen > 0 or spielzeit > 30.0 or not erster_start):
+		return {"genommen": genommen, "muenzen": muenzen, "spielzeit": spielzeit, "aera": aera, "geknackt": geknackt}
+	var pfad := "user://glas_%d.json" % n
+	if not FileAccess.file_exists(pfad):
+		return {}
+	var d = JSON.parse_string(FileAccess.get_file_as_string(pfad))
+	if not (d is Dictionary):
+		return {}
+	return {"genommen": int(d.get("genommen", 0)), "muenzen": float(d.get("muenzen", 0.0)), "spielzeit": float(d.get("spielzeit", 0.0)),
+		"aera": int(d.get("aera", 1)), "geknackt": int(d.get("geknackt", 0))}
+
+
+## Wechselt das Glas: aktuelles speichern, anderes laden, Welt neu aufbauen und direkt losspielen.
+func slot_wechseln(n: int) -> void:
+	if not (slot_info(slot).is_empty() and n != slot):
+		speichern()
+	_slot_setzen(n)
+	einstellungen_speichern()
+	_zustand_leeren()
+	laden()
+	_pruefe_aera(false)
+	if bestellungen.is_empty():
+		_bestellungen_auffuellen()
+	titel_ueberspringen = true
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
+## Schüttet ein Glas weg. Ist es das aktuelle, beginnt dort ein neues Spiel (ohne die Welt neu zu laden).
+func slot_loeschen(n: int) -> void:
+	for pfad in ["user://glas_%d.json" % n, "user://glas_%d_berg.dat" % n]:
+		if FileAccess.file_exists(pfad):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(pfad))
+	if n == slot:
+		_zustand_leeren()
+		_bestellungen_auffuellen()
+		titel_ueberspringen = false
+		get_tree().paused = false
+		get_tree().reload_current_scene()
 
 
 func _process(delta: float) -> void:
@@ -130,6 +353,11 @@ func ist_abend() -> bool:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		speichern()
+		einstellungen_speichern()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT and bool(einstellungen.stumm_ohne_fokus):
+		AudioServer.set_bus_mute(0, true)
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		AudioServer.set_bus_mute(0, false)
 
 
 # --- Eingaben (werden zur Laufzeit angelegt, damit project.godot schlank bleibt) ---
@@ -141,6 +369,7 @@ func _eingaben_anlegen() -> void:
 		"laden": [KEY_B], "werkzeug_wechseln": [KEY_X],
 		"cheat_geld": [KEY_F9], "cheat_nuesse": [KEY_F10], "cheat_mp": [KEY_F11],
 	}
+	_standard_tasten = tasten
 	for aktion in tasten:
 		if not InputMap.has_action(aktion):
 			InputMap.add_action(aktion)
@@ -223,7 +452,7 @@ func werkzeug_werte(id: String = "") -> Dictionary:
 		"id": id,
 		"name": w.name,
 		"kraft": w.kraft * (1.0 + 0.05 * stufe),
-		"zeit": w.zeit * pow(0.95, stufe),
+		"zeit": w.zeit * pow(0.95, stufe) * (1.3 if bool(einstellungen.zeiger_gemuetlich) else 1.0),
 		"sweet": w.sweet + 0.005 * stufe + bonus("sweet") + (0.06 if hat_talent("ruhige_hand") else 0.0) + (0.03 if hat_fund("figuren") else 0.0),
 		"stufe": stufe,
 	}
@@ -791,7 +1020,7 @@ func speichern() -> void:
 		"naechster_meilenstein": naechster_meilenstein,
 		"werkzeuge": werkzeuge, "werkzeug_aktiv": werkzeug_aktiv,
 		"maschinen": maschinen, "talente": talente, "bestellungen": bestellungen,
-		"behaelter": behaelter, "statistik": statistik, "einstellungen": einstellungen,
+		"behaelter": behaelter, "statistik": statistik,
 		"erster_start": erster_start, "berg_fertig": berg_fertig, "spielzeit": spielzeit,
 		"ziel_index": ziel_index, "ziel_zaehler": ziel_zaehler,
 		"skills": skills, "sammler": sammler, "sammler_aktiv": sammler_aktiv, "beutel_id": beutel_id,
@@ -829,8 +1058,6 @@ func laden() -> void:
 	behaelter = d.get("behaelter", {})
 	for k in statistik:
 		statistik[k] = d.get("statistik", {}).get(k, statistik[k])
-	for k in einstellungen:
-		einstellungen[k] = d.get("einstellungen", {}).get(k, einstellungen[k])
 	erster_start = bool(d.get("erster_start", false))
 	berg_fertig = bool(d.get("berg_fertig", false))
 	spielzeit = float(d.get("spielzeit", 0))
@@ -875,6 +1102,14 @@ func zuruecksetzen() -> void:
 	for pfad in [SPEICHER_PFAD, BERG_PFAD]:
 		if FileAccess.file_exists(pfad):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(pfad))
+	_zustand_leeren()
+	_bestellungen_auffuellen()
+	titel_ueberspringen = true
+	get_tree().reload_current_scene()
+
+
+## Alles im Speicher auf Anfang (die Dateien bleiben, wie sie sind).
+func _zustand_leeren() -> void:
 	skills = {}
 	sammler = {"haende": 0}
 	sammler_aktiv = "haende"
@@ -909,8 +1144,6 @@ func zuruecksetzen() -> void:
 	spielzeit = 0.0
 	ziel_index = 0
 	ziel_zaehler = 0
-	_bestellungen_auffuellen()
-	get_tree().reload_current_scene()
 
 
 # --- Ziele -------------------------------------------------------------------

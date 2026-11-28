@@ -93,6 +93,9 @@ Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4
 | `scripts/bach.gd` | Wasser des Bachs, Wasserfall, Gischt und Wasserrauschen |
 | `scripts/wald.gd` | Waldgürtel, Baumgruppen, Unterholz, Uferbewuchs, Blumen |
 | `scripts/streuer.gd` | Stellt Modelle massenhaft als MultiMesh auf |
+| `scripts/ui/stil.gd` | Look aller Menüs und Anzeigen („Opas Kladde“: Papier, Tinte, Rotstift) samt Bauteilen (Regler, Haken, Auswahl, Menüeintrag) |
+| `scripts/ui/titel.gd` | Titelbild vor dem echten Tal, Gläser (drei Spielstände) |
+| `scripts/ui/optionen.gd` | Einstellungen: Bild, Ton, Steuerung mit Tastenbelegung, Spiel |
 | `scripts/ersatz.gd` | Ersatzmodelle aus Code für die Blender-Modellplätze |
 | `scripts/himmel.gd` | Tag-Nacht-Lauf, Wetter, Licht |
 | `scripts/tierwelt.gd` | Vögel, Hühner, Enten, Schmetterlinge, Glühwürmchen, Rauch |
@@ -133,6 +136,6 @@ Alle fremden Modelle und Geräusche stehen unter CC0 (gemeinfrei), eine Nennung 
 
 - [Kenney](https://kenney.nl): Nature Kit, Food Kit, Impact Sounds, Interface Sounds
 - [KayKit](https://kaylousberg.itch.io) von Kay Lousberg: Forest Nature Pack, Resource Bits
-- Schrift [Fredoka](https://fonts.google.com/specimen/Fredoka) (SIL Open Font License)
+- Schriften [Fredoka](https://fonts.google.com/specimen/Fredoka), [Lilita One](https://fonts.google.com/specimen/Lilita+One) und [Caveat Brush](https://fonts.google.com/specimen/Caveat+Brush) (alle SIL Open Font License, Lizenztexte in `fonts/`)
 
 Die Herbstfarben der KayKit-Bäume (`assets/wald/forest_texture_herbst.png`) sind aus der Originaltextur umgefärbt.

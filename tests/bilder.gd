@@ -34,6 +34,10 @@ func _ready() -> void:
 				var n := berg.abbauen(Vector3(float(gw[0]), 0, float(gw[1])), float(gw[2]), int(gw[3]))
 				Game.nuesse_vom_berg(n)
 			await _warte(6.0)
+		if arg == "--menue":
+			await _menue_bilder(s)
+			get_tree().quit(0)
+			return
 		if arg == "--probe":
 			await _trefferprobe_bilder(s)
 			get_tree().quit(0)
@@ -238,6 +242,62 @@ func _zielen(s: Spieler, punkt: Vector3) -> void:
 	var r := punkt - kopf
 	s.rotation.y = atan2(-r.x, -r.z)
 	s._blick_x = atan2(r.y, Vector2(r.x, r.z).length())
+
+
+## Titelbild, Gläser, Einstellungen, Pause, Laden und Anzeigen im Spiel: --menue
+func _menue_bilder(s: Spieler) -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	Game.genommen = 183450
+	Game.muenzen = 48210.0
+	Game.spielzeit = 9360.0
+	Game.erster_start = false
+	var t := Titel.new(welt)
+	welt.add_child(t)
+	t._blende.visible = false      # die Blende läuft im langsamen Testbild zu lange
+	await _frames(3)
+	await _foto("m1_titel")
+	# Ein Beispielglas, damit ein gefülltes zu sehen ist (wird gleich wieder entfernt)
+	var probe := FileAccess.open("user://glas_2.json", FileAccess.WRITE)
+	probe.store_string(JSON.stringify({"genommen": 412300, "muenzen": 1284000.0, "spielzeit": 20520.0, "aera": 3, "geknackt": 9200}))
+	probe.close()
+	t._glaeser()
+	await _frames(3)
+	await _foto("m2_glaeser")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://glas_2.json"))
+	for i in 4:
+		t._einstellungen()
+		await _frames(3)
+		Optionen.baue(t._seite.get_child(t._seite.get_child_count() - 1), t._haupt, i)
+		await _frames(3)
+		await _foto("m3_einstellungen_%d" % i)
+	t._haupt()
+	t._los()
+	await _frames(9)
+	_blick(s, Vector3(1.0, 0.05, -6.2), 0.0, 0.05)
+	Game.toast.emit("Holzlöffel gekauft", Game.FARBE_GUT)
+	await _frames(3)
+	await _foto("m4_hud")
+	welt._menue(welt.menues.zeige_pause)
+	await _frames(3)
+	await _foto("m5_pause")
+	welt.menues.zeige_laden(0)
+	await _frames(3)
+	await _foto("m6_laden")
+	welt.menues.zeige_talente()
+	await _frames(3)
+	await _foto("m7_skills")
+	welt.menues.zeige_fundbuch()
+	await _frames(3)
+	await _foto("m8_fundbuch")
+	welt.menues.schliessen()
+	get_tree().paused = false
+	print("Menübilder fertig")
+	get_tree().quit(0)
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await get_tree().process_frame
 
 
 ## Nur die Trefferprobe an der Knackbank: --probe

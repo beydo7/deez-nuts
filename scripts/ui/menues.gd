@@ -17,6 +17,15 @@ func _ready() -> void:
 	_wurzel.theme = Stil.thema()
 	_wurzel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_wurzel)
+	# Schrift, die in ein Blatt Papier gehängt wird, bekommt Tinte statt heller Farbe mit Rand
+	get_tree().node_added.connect(func(n: Node):
+		if offen != "" and n is Label and _wurzel.is_ancestor_of(n):
+			var eltern := n.get_parent()
+			while eltern and eltern != _wurzel:
+				if eltern.has_meta("papier") or eltern is Stil.Blatt:
+					Stil.auf_papier(n)
+					break
+				eltern = eltern.get_parent())
 	Game.stand_geaendert.connect(_neu_zeichnen)
 	Game.geld_geaendert.connect(_neu_zeichnen)
 
@@ -26,6 +35,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("pause") or (event.is_action_pressed("talente") and offen == "talente") or (event.is_action_pressed("benutzen") and offen == "laden"):
 		if offen == "ende":
+			return
+		if offen == "einstellungen":
+			Game.einstellungen_speichern()
+			zeige_pause()
+			get_viewport().set_input_as_handled()
 			return
 		schliessen()
 		get_viewport().set_input_as_handled()
@@ -41,9 +55,16 @@ func _leeren() -> void:
 	_inhalt = null
 
 
+func _anzeigen(an: bool) -> void:
+	var welt := get_parent()
+	if welt and welt.get("hud") != null:
+		welt.hud.visible = an
+
+
 func schliessen() -> void:
 	_leeren()
 	offen = ""
+	_anzeigen(true)
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	geschlossen.emit()
@@ -52,6 +73,8 @@ func schliessen() -> void:
 func _oeffnen(art: String, pausieren := false) -> void:
 	_leeren()
 	offen = art
+	# Pause und Einstellungen stehen frei über der Welt: Die Anzeigen des Spiels machen so lange Platz
+	_anzeigen(art != "pause" and art != "einstellungen")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = pausieren
 
@@ -174,17 +197,29 @@ func _reiter_helfer() -> Control:
 
 func _zeile(titel: String, text: String, knoepfe: Array) -> Control:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", Stil.box(Color(0.24, 0.15, 0.08, 0.9), Color(0.45, 0.32, 0.18), 8, 10))
+	# Zeile wie in einer Preisliste: kein Kasten, nur ein Strich darunter
+	var strich := StyleBoxFlat.new()
+	strich.bg_color = Color(0, 0, 0, 0)
+	strich.border_color = Color(Stil.TINTE, 0.28)
+	strich.border_width_bottom = 2
+	strich.content_margin_left = 4
+	strich.content_margin_right = 4
+	strich.content_margin_top = 6
+	strich.content_margin_bottom = 9
+	p.add_theme_stylebox_override("panel", strich)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 12)
 	p.add_child(h)
 	var v := VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(v)
-	v.add_child(Stil.label(titel, 21, Stil.GOLD))
-	v.add_child(Stil.label(text, 16, Stil.TEXT, true))
+	var kopf := Stil.tinte(titel, 22)
+	kopf.add_theme_font_override("font", Look.schrift(600))
+	v.add_child(kopf)
+	v.add_child(Stil.tinte(text, 16, Stil.TINTE_LEISE, true))
 	for k in knoepfe:
 		k.custom_minimum_size = Vector2(180, 0)
+		k.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(k)
 	return p
 
@@ -313,64 +348,64 @@ func zeige_talente() -> void:
 
 func zeige_pause() -> void:
 	_oeffnen("pause", true)
-	var v := Stil.fenster(_wurzel, "Pause", 620, 700, schliessen)
-	v.add_child(Stil.knopf("Weiterspielen", schliessen, 22))
-	v.add_child(Stil.label("Einstellungen", 22, Stil.GOLD))
-	v.add_child(_regler("Maus-Empfindlichkeit", 0.05, 0.8, float(Game.einstellungen.empfindlichkeit), func(x): Game.einstellungen.empfindlichkeit = x))
-	v.add_child(_regler("Lautstärke", 0.0, 1.0, float(Game.einstellungen.lautstaerke), func(x):
-		Game.einstellungen.lautstaerke = x
-		AudioServer.set_bus_volume_db(0, linear_to_db(max(0.001, x)))))
-	v.add_child(_regler("Musik", 0.0, 1.0, float(Game.einstellungen.musik), func(x):
-		Game.einstellungen.musik = x
-		Sfx.musik_lautstaerke(x)))
-	v.add_child(_schalter("Zeit anhalten (immer dieselbe Tageszeit)", "zeit_fest"))
-	v.add_child(Stil.knopf("Steuerung anzeigen", zeige_intro, 20))
-	v.add_child(Stil.knopf("Speichern", func():
-		Game.speichern()
-		Game.toast.emit("Gespeichert", Game.FARBE_GUT), 20))
-	var neu := Stil.knopf("Neues Spiel (Spielstand löschen)", func(): _bestaetigen_neu(), 20)
-	v.add_child(neu)
-	v.add_child(Stil.knopf("Speichern und beenden", func():
-		Game.speichern()
-		get_tree().quit(), 20))
+	var dunkel := ColorRect.new()
+	dunkel.color = Color(0.06, 0.035, 0.02, 0.62)
+	dunkel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dunkel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_wurzel.add_child(dunkel)
+	var kopf := Stil.titel("Pause", 84)
+	kopf.position = Vector2(96, 96)
+	_wurzel.add_child(kopf)
+	var notiz := Stil.label("Gespeichert wird von selbst, alle halbe Minute und beim Beenden.", 26, Stil.LEISE)
+	notiz.add_theme_font_override("font", Stil.schrift_hand())
+	notiz.position = Vector2(100, 196)
+	_wurzel.add_child(notiz)
+	var liste := VBoxContainer.new()
+	liste.position = Vector2(96, 262)
+	liste.add_theme_constant_override("separation", 4)
+	_wurzel.add_child(liste)
+	var punkte := [
+		["Weiter", schliessen],
+		["Einstellungen", zeige_einstellungen],
+		["Steuerung", zeige_intro],
+		["Neu anfangen", _bestaetigen_neu],
+		["Zum Titelbild", func():
+			Game.speichern()
+			get_tree().paused = false
+			get_tree().reload_current_scene()],
+		["Beenden", func():
+			Game.speichern()
+			Game.einstellungen_speichern()
+			get_tree().quit()]]
+	var erster: Control = null
+	for p in punkte:
+		var e := Stil.Eintrag.new(p[0], "", 44)
+		e.gewaehlt.connect(p[1])
+		liste.add_child(e)
+		if erster == null:
+			erster = e
+	erster.grab_focus.call_deferred()
+
+
+func zeige_einstellungen() -> void:
+	_oeffnen("einstellungen", true)
+	var halter := Control.new()
+	halter.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_wurzel.add_child(halter)
+	Optionen.baue(halter, zeige_pause)
 
 
 func _bestaetigen_neu() -> void:
 	_oeffnen("pause", true)
-	var v := Stil.fenster(_wurzel, "Wirklich neu anfangen?", 560, 220, zeige_pause)
-	v.add_child(Stil.label("Der ganze Spielstand wird gelöscht.", 20, Stil.TEXT, true))
+	var v := Stil.fenster(_wurzel, "Wirklich neu anfangen?", 600, 250, zeige_pause)
+	v.add_child(Stil.tinte("Glas %d wird ausgeschüttet: Berg, Münzen und alles Gekaufte sind weg. Die anderen Gläser bleiben." % Game.slot, 20, Stil.TINTE, true))
 	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
 	v.add_child(h)
-	h.add_child(Stil.knopf("Ja, löschen", func():
+	h.add_child(Stil.knopf("Ja, ausschütten", func():
 		get_tree().paused = false
 		Game.zuruecksetzen(), 20))
-	h.add_child(Stil.knopf("Abbrechen", zeige_pause, 20))
-
-
-func _regler(titel: String, von: float, bis: float, wert: float, setzen: Callable) -> Control:
-	var h := HBoxContainer.new()
-	var l := Stil.label(titel, 18)
-	l.custom_minimum_size = Vector2(250, 0)
-	h.add_child(l)
-	var s := HSlider.new()
-	s.min_value = von
-	s.max_value = bis
-	s.step = 0.01
-	s.value = wert
-	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	s.value_changed.connect(setzen)
-	h.add_child(s)
-	return h
-
-
-func _schalter(titel: String, schluessel: String) -> Control:
-	var c := CheckBox.new()
-	c.text = titel
-	c.button_pressed = bool(Game.einstellungen[schluessel])
-	c.add_theme_font_size_override("font_size", 18)
-	c.toggled.connect(func(an): Game.einstellungen[schluessel] = an)
-	c.focus_mode = Control.FOCUS_NONE
-	return c
+	h.add_child(Stil.knopf("Lieber nicht", zeige_pause, 20))
 
 
 # --- Intro und Steuerung ------------------------------------------------------------
@@ -387,7 +422,8 @@ func zeige_fundbuch() -> void:
 	for f in Data.FUNDE:
 		var da := Game.hat_fund(f.id)
 		var p := PanelContainer.new()
-		p.add_theme_stylebox_override("panel", Stil.box(Color(0.2, 0.14, 0.09, 0.95) if da else Color(0.13, 0.1, 0.08, 0.9), Color(0.75, 0.58, 0.25) if da else Color(0.35, 0.28, 0.2), 8, 10))
+		var karte := Stil.papier(Color(1.0, 0.985, 0.93) if da else Color(Stil.PAPIER_ALT, 0.55), 12, 5 if da else 0)
+		p.add_theme_stylebox_override("panel", karte)
 		var z := VBoxContainer.new()
 		z.add_child(Stil.label(str(f.name) if da else "? ? ?", 22, Stil.GOLD if da else Stil.LEISE))
 		z.add_child(Stil.label(("„%s“ – Opa" % f.text) if da else str(f.hinweis), 17, Stil.TEXT if da else Stil.LEISE, true))

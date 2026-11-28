@@ -95,10 +95,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		var e: float = float(Game.einstellungen.empfindlichkeit) * 0.01
 		if sitzt:
 			_sitz_gier = clampf(_sitz_gier - event.relative.x * e * 0.6, -0.55, 0.55)
-			_sitz_neigung = clampf(_sitz_neigung - event.relative.y * e * 0.6, -0.3, 0.55)
+			_sitz_neigung = clampf(_sitz_neigung - event.relative.y * e * 0.6 * _y_richtung(), -0.3, 0.55)
 		else:
 			rotate_y(-event.relative.x * e)
-			_blick_x = clampf(_blick_x - event.relative.y * e, -1.45, 1.45)
+			_blick_x = clampf(_blick_x - event.relative.y * e * _y_richtung(), -1.45, 1.45)
 	if sitzt:
 		_eingabe_sitzend(event)
 		return
@@ -286,7 +286,7 @@ func _process(delta: float) -> void:
 	if sitzt and sitz_station and sitz_station.drueckt:
 		# Erst ab der Riss-Zone wackelt das Bild leicht, damit der Zeiger gut lesbar bleibt
 		druck_zittern = clampf((sitz_station.druck - float(sitz_station.zonen.get("a", 0.4))) / 0.5, 0.0, 1.0) * 0.07
-	var w := _trauma * _trauma + druck_zittern * druck_zittern
+	var w := (_trauma * _trauma + druck_zittern * druck_zittern) * float(Game.einstellungen.wackeln)
 	if w > 0.0001:
 		var n := _zeit * 40.0
 		var drehung := Vector3(_rausch.get_noise_2d(n, 1.0), _rausch.get_noise_2d(n, 50.0), _rausch.get_noise_2d(n, 99.0)) * 0.06 * w
@@ -294,7 +294,8 @@ func _process(delta: float) -> void:
 		ziel_t.origin += ziel_t.basis * Vector3(_rausch.get_noise_2d(n, 7.0), _rausch.get_noise_2d(n, 17.0), 0) * 0.01 * w
 	kamera.global_transform = ziel_t
 	_fov_stoss = lerpf(_fov_stoss, 0.0, 1.0 - exp(-delta * 10.0))
-	kamera.fov = lerpf(FOV_LAUFEN, FOV_SITZEN, t) + _fov_stoss
+	var weit := float(Game.einstellungen.sichtfeld)
+	kamera.fov = lerpf(weit, FOV_SITZEN * weit / FOV_LAUFEN, t) + _fov_stoss
 	# Automatisch nachlegen, wenn man sitzt
 	if sitzt and sitz_station and not sitz_station.geladen and _nachlege_pause <= 0.0:
 		_nachlegen()
@@ -412,6 +413,10 @@ func _sammeln(delta: float) -> void:
 	if _staub_timer <= 0.0:
 		_staub_timer = 0.35
 		Effekte.staub(welt, sammel_punkt + Vector3(0, 0.05, 0), Color(0.75, 0.6, 0.42, 0.35), 4, 0.25)
+
+
+func _y_richtung() -> float:
+	return -1.0 if bool(Game.einstellungen.y_umkehren) else 1.0
 
 
 func wackeln(staerke: float) -> void:

@@ -86,14 +86,15 @@ func _kasse_bauen() -> void:
 	h.add_theme_constant_override("separation", 10)
 	v.add_child(h)
 	var muenze := Muenze.new()
-	muenze.custom_minimum_size = Vector2(34, 34)
+	muenze.custom_minimum_size = Vector2(40, 40)
+	muenze.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(muenze)
-	_muenz_label = Stil.label("0", 34, Stil.GOLD)
+	_muenz_label = Stil.titel("0", 42, Stil.GOLD)
 	h.add_child(_muenz_label)
 	_nebenwerte = Stil.label("", 17, Stil.LEISE)
 	v.add_child(_nebenwerte)
-	_combo = Stil.label("", 22, Color(1.0, 0.6, 0.25))
-	_combo.position = Vector2(22, 112)
+	_combo = Stil.titel("", 26, Color(1.0, 0.6, 0.25))
+	_combo.position = Vector2(22, 104)
 	_wurzel.add_child(_combo)
 
 
@@ -148,27 +149,35 @@ func _bestellungen_bauen() -> void:
 
 
 func _ziel_bauen() -> void:
-	_ziel_box = PanelContainer.new()
-	_ziel_box.position = Vector2(18, 170)
-	_ziel_box.custom_minimum_size = Vector2(330, 0)
-	_ziel_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ziel_box.add_theme_stylebox_override("panel", Stil.box(Color(0.14, 0.2, 0.12, 0.85), Color(0.55, 0.78, 0.4), 12, 14))
+	var zettel := Stil.Blatt.new()
+	zettel.liniert = false
+	zettel.klebestreifen = true
+	zettel.innen = 16
+	zettel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ziel_box = zettel
+	_ziel_box.position = Vector2(26, 182)
+	_ziel_box.custom_minimum_size = Vector2(318, 0)
+	_ziel_box.rotation_degrees = -1.3
 	_wurzel.add_child(_ziel_box)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 4)
+	v.add_theme_constant_override("separation", 0)
 	_ziel_box.add_child(v)
-	_ziel_titel = Stil.label("ZIEL", 15, Color(0.7, 0.95, 0.55))
+	_ziel_titel = Stil.hand("Ziel", 24, Stil.ROTSTIFT)
 	v.add_child(_ziel_titel)
-	_ziel_text = Stil.label("", 21, Stil.TEXT, true)
-	_ziel_text.custom_minimum_size = Vector2(300, 0)
+	_ziel_text = Stil.tinte("", 21, Stil.TINTE, true)
+	_ziel_text.add_theme_font_override("font", Look.schrift(600))
+	_ziel_text.custom_minimum_size = Vector2(286, 0)
 	v.add_child(_ziel_text)
-	_ziel_hilfe = Stil.label("", 15, Stil.LEISE, true)
-	_ziel_hilfe.custom_minimum_size = Vector2(300, 0)
+	_ziel_hilfe = Stil.hand("", 22, Stil.TINTE_LEISE, true)
+	_ziel_hilfe.custom_minimum_size = Vector2(286, 0)
 	v.add_child(_ziel_hilfe)
 	_ziel_balken = ProgressBar.new()
-	_ziel_balken.custom_minimum_size = Vector2(300, 8)
+	_ziel_balken.custom_minimum_size = Vector2(286, 7)
 	_ziel_balken.show_percentage = false
-	_ziel_balken.add_theme_stylebox_override("fill", Stil.box(Color(0.55, 0.85, 0.4), Color(0.55, 0.85, 0.4), 4, 0))
+	var fuell := StyleBoxFlat.new()
+	fuell.bg_color = Stil.GRUENSTIFT
+	fuell.set_corner_radius_all(2)
+	_ziel_balken.add_theme_stylebox_override("fill", fuell)
 	v.add_child(_ziel_balken)
 
 
@@ -196,7 +205,7 @@ func _mitte_bauen() -> void:
 	_prompt2.alignment = BoxContainer.ALIGNMENT_CENTER
 	_prompt2.add_theme_constant_override("separation", 6)
 	box.add_child(_prompt2)
-	_stempel = Stil.label("", 54, Stil.GOLD)
+	_stempel = Stil.titel("", 54, Stil.GOLD)
 	_stempel.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_stempel.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_stempel.add_theme_constant_override("outline_size", 10)
@@ -333,6 +342,7 @@ func _process(delta: float) -> void:
 		if _kreuz.station:
 			_kreuz.nuss_bild = spieler.kamera.unproject_position(st.sitz_global())
 		_kreuz.queue_redraw()
+	_tasten_leiste.visible = bool(Game.einstellungen.tastenhilfe)
 	_tasten_leiste_zeichnen(sitzt)
 	_glas_zeichnen(sitzt)
 	_beutel_zeichnen(sitzt)
@@ -493,7 +503,7 @@ func _glas_zeichnen(sitzt: bool) -> void:
 func _ziel_zeichnen() -> void:
 	var z := Game.ziel_aktuell()
 	if not z.is_empty():
-		_ziel_titel.text = "ZIEL %d/%d" % [Game.ziel_index + 1, Data.ZIELE.size()]
+		_ziel_titel.text = "Ziel %d von %d" % [Game.ziel_index + 1, Data.ZIELE.size()]
 		_ziel_text.text = z.text
 		_ziel_hilfe.text = z.hilfe
 		var n := int(z.get("anzahl", 1))
@@ -503,12 +513,12 @@ func _ziel_zeichnen() -> void:
 	var k := Game.naechstes_kaufziel()
 	if k.is_empty():
 		var naechste := Data.naechste_schicht(Game.genommen)
-		_ziel_titel.text = "ZIEL"
+		_ziel_titel.text = "Ziel"
 		_ziel_text.text = "Trag den Berg ab!" if naechste.is_empty() else "Grab dich bis zur Schicht „%s“" % naechste.name
 		_ziel_hilfe.text = "Skills lernen mit [Tab]"
 		_ziel_balken.visible = false
 		return
-	_ziel_titel.text = "NÄCHSTES ZIEL"
+	_ziel_titel.text = "Als Nächstes"
 	_ziel_text.text = "%s bestellen" % k.name
 	var fehlt: float = max(0.0, float(k.preis) - Game.muenzen)
 	_ziel_hilfe.text = ("Noch %s Münzen" % Data.zahl(fehlt)) if fehlt > 0.0 else "Genug Geld! Ab zum roten Telefon."
@@ -519,27 +529,36 @@ func _ziel_zeichnen() -> void:
 func _bestellungen_zeichnen() -> void:
 	for c in _bestellungen.get_children():
 		c.queue_free()
-	var kopf := Stil.label("Bestellungen", 17, Stil.GOLD)
+	if Game.bestellungen.is_empty():
+		return
+	var kopf := Stil.label("Bestellungen", 26, Stil.TEXT)
+	kopf.add_theme_font_override("font", Stil.schrift_hand())
 	kopf.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_bestellungen.add_child(kopf)
+	var nr := 0
 	for b in Game.bestellungen:
 		var p := PanelContainer.new()
-		p.add_theme_stylebox_override("panel", Stil.box(Color(0.12, 0.08, 0.05, 0.78), Color(0.5, 0.38, 0.22, 0.8), 10, 10))
+		p.add_theme_stylebox_override("panel", Stil.papier(Stil.PAPIER, 12, 6))
 		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.pivot_offset = Vector2(157, 30)
+		p.rotation_degrees = [0.7, -0.9, 0.4, -0.5][nr % 4]
+		nr += 1
 		var v := VBoxContainer.new()
-		v.add_theme_constant_override("separation", 2)
+		v.add_theme_constant_override("separation", 0)
 		p.add_child(v)
 		var z1 := HBoxContainer.new()
 		v.add_child(z1)
-		var name_l := Stil.label(b.kunde, 16, Stil.TEXT)
+		var name_l := Stil.tinte(b.kunde, 17)
+		name_l.add_theme_font_override("font", Look.schrift(600))
 		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		z1.add_child(name_l)
 		var zeit := int(b.zeit)
-		z1.add_child(Stil.label("%d:%02d" % [zeit / 60, zeit % 60], 15, Stil.ROT if zeit < 60 else Stil.LEISE))
+		z1.add_child(Stil.hand("%d:%02d" % [zeit / 60, zeit % 60], 22, Stil.ROTSTIFT if zeit < 60 else Stil.TINTE_LEISE))
 		var n: String = Data.NUESSE[b.nuss].name
-		v.add_child(Stil.label("%d/%d %s-Hälften  ·  %s%s" % [b.stand, b.menge, n, Data.zahl(b.lohn), " + Goldnuss" if b.gold > 0 else ""], 14, Stil.LEISE))
+		v.add_child(Stil.tinte("%d von %d %s-Hälften" % [b.stand, b.menge, n], 15, Stil.TINTE))
+		v.add_child(Stil.hand("bringt %s%s" % [Data.zahl(b.lohn), " und eine Goldnuss" if b.gold > 0 else ""], 20, Stil.TINTE_LEISE))
 		var bal := ProgressBar.new()
-		bal.custom_minimum_size = Vector2(0, 6)
+		bal.custom_minimum_size = Vector2(0, 5)
 		bal.show_percentage = false
 		bal.value = 100.0 * float(b.stand) / float(b.menge)
 		v.add_child(bal)
@@ -555,9 +574,9 @@ func zeige_warnung(text: String) -> void:
 
 func zeige_toast(text: String, farbe: Color) -> void:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", Stil.box(Color(0.1, 0.07, 0.04, 0.78), farbe * Color(1, 1, 1, 0.6), 14, 6))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var l := Stil.label(text, 16, farbe, true)
+	var l := Stil.label(text, 19, farbe.lerp(Stil.TEXT, 0.25), true)
+	l.add_theme_font_override("font", Look.schrift(600))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	p.add_child(l)
 	p.set_meta("zeit", 3.2)

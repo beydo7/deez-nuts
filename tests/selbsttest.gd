@@ -886,6 +886,49 @@ func _menues() -> void:
 	await warte(0.2)
 	m.schliessen()
 	pruefe(not m.ist_offen(), "Alle Menüs öffnen und schließen")
+	# Pause und Einstellungen stehen frei über der Welt, die Anzeigen machen Platz
+	m.zeige_pause()
+	await warte(0.1)
+	pruefe(m.offen == "pause" and not welt.hud.visible and get_tree().paused, "Pause hält an und blendet die Anzeigen aus")
+	for r in 4:
+		m.zeige_einstellungen()
+		Optionen.baue(m._wurzel.get_child(m._wurzel.get_child_count() - 1), m.zeige_pause, r)
+		await warte(0.1)
+	pruefe(m.offen == "einstellungen", "Einstellungen mit allen vier Reitern bauen sich auf")
+	m.zeige_fundbuch()
+	await warte(0.1)
+	m.schliessen()
+	pruefe(welt.hud.visible and not get_tree().paused, "Nach dem Schließen sind die Anzeigen wieder da")
+	# Tasten umbelegen
+	Game.taste_belegen("benutzen", KEY_G)
+	pruefe(Game.taste_von("benutzen") == KEY_G and Game.tastenname_fuer("E") == "G", "Umbelegte Taste gilt und steht in den Hinweisen")
+	var ev := InputEventKey.new()
+	ev.physical_keycode = KEY_G
+	ev.pressed = true
+	pruefe(ev.is_action("benutzen") and not ev.is_action("hebel"), "Die neue Taste löst die Aktion aus")
+	Game.taste_belegen("hebel", KEY_G)
+	pruefe(Game.taste_von("hebel") == KEY_G and Game.taste_von("benutzen") == KEY_R, "Schon vergebene Taste: die beiden tauschen")
+	Game.einstellungen_standard(["tasten"])
+	pruefe(Game.taste_von("benutzen") == KEY_E and Game.tastenname_fuer("E") == "E", "Standard stellt die Tasten wieder her")
+	Game.einstellungen.zeiger_gemuetlich = true
+	var langsam: float = Game.werkzeug_werte().zeit
+	Game.einstellungen.zeiger_gemuetlich = false
+	pruefe(langsam > float(Game.werkzeug_werte().zeit) * 1.2, "Gemütlicher Zeiger läuft langsamer")
+	# Titelbild: hält das Spiel an, führt über alle Seiten und dann ins Spiel
+	Game.erster_start = false
+	var t := Titel.new(welt)
+	welt.add_child(t)
+	await warte(0.2)
+	pruefe(get_tree().paused and not welt.hud.visible and welt.spieler.gesperrt, "Titelbild hält das Spiel an und blendet die Anzeigen aus")
+	t._glaeser()
+	await warte(0.1)
+	t._einstellungen()
+	await warte(0.1)
+	t._haupt()
+	await warte(0.1)
+	t._los()
+	await warte(1.3)
+	pruefe(not get_tree().paused and welt.hud.visible and not welt.spieler.gesperrt and not is_instance_valid(t), "Vom Titelbild geht es ins Spiel")
 
 
 func _spieler() -> void:
