@@ -20,6 +20,10 @@ func _ready() -> void:
 	var berg: Nussberg = welt.berg
 	# Nur bestimmte Blicke: --blicke=name:x,z,zielx,ziely,zielz;name2:...
 	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--modell-export="):
+			load("res://tools/blender/ersatz_export.gd").new().schreibe(welt, arg.substr(16))
+			get_tree().quit(0)
+			return
 		if arg.begins_with("--aera="):
 			for a in range(2, int(arg.substr(7)) + 1):
 				welt.aeren._bauen(a, false)

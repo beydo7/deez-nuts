@@ -1,0 +1,1441 @@
+{
+ "halm_999999": {
+  "art": "halm",
+  "shader": "res://shaders/halm.gdshader",
+  "u": {}
+ },
+ "holz_5b7769": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.225000008940697,
+    0.314999997615814,
+    0.270000010728836,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.356000006198883,
+    0.466399997472763,
+    0.411200016736984,
+    1.0
+   ],
+   "lack": 0.2,
+   "ringdichte": 3.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_5c4533": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.200000002980232,
+    0.140000000596046,
+    0.100000001490116,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.360000014305115,
+    0.270000010728836,
+    0.200000002980232,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 14.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_75573d": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.280000001192093,
+    0.200000002980232,
+    0.129999995231628,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.46000000834465,
+    0.340000003576279,
+    0.239999994635582,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 16.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_984333": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.420000016689301,
+    0.150000005960464,
+    0.0974999964237213,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.595200002193451,
+    0.263999998569489,
+    0.199599996209145,
+    1.0
+   ],
+   "lack": 0.15,
+   "ringdichte": 3.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_altholz": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.349999994039536,
+    0.270000010728836,
+    0.200000002980232,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.550000011920929,
+    0.449999988079071,
+    0.349999994039536,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 9.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_altholz_b": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.6,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.349999994039536,
+    0.270000010728836,
+    0.200000002980232,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.550000011920929,
+    0.449999988079071,
+    0.349999994039536,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 6.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_altholz_c": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.6,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.349999994039536,
+    0.270000010728836,
+    0.200000002980232,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.550000011920929,
+    0.449999988079071,
+    0.349999994039536,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 5.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_dee3d5": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.644999980926514,
+    0.659999966621399,
+    0.615000009536743,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.871200025081635,
+    0.889599978923798,
+    0.834399998188019,
+    1.0
+   ],
+   "lack": 0.3,
+   "ringdichte": 3.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_eiche": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.5,
+    0.330000013113022,
+    0.189999997615814,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.740000009536743,
+    0.550000011920929,
+    0.349999994039536,
+    1.0
+   ],
+   "lack": 0.1,
+   "ringdichte": 9.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_eiche_b": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.5,
+    0.330000013113022,
+    0.189999997615814,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.740000009536743,
+    0.550000011920929,
+    0.349999994039536,
+    1.0
+   ],
+   "lack": 0.2,
+   "ringdichte": 9.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_eiche_c": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.5,
+    0.330000013113022,
+    0.189999997615814,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.740000009536743,
+    0.550000011920929,
+    0.349999994039536,
+    1.0
+   ],
+   "lack": 0.1,
+   "ringdichte": 8.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_eiche_d": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.5,
+    0.330000013113022,
+    0.189999997615814,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.740000009536743,
+    0.550000011920929,
+    0.349999994039536,
+    1.0
+   ],
+   "lack": 0.2,
+   "ringdichte": 8.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_kiefer": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.660000026226044,
+    0.479999989271164,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.860000014305115,
+    0.699999988079071,
+    0.479999989271164,
+    1.0
+   ],
+   "lack": 0.2,
+   "ringdichte": 12.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_kiefer_b": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.660000026226044,
+    0.479999989271164,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.860000014305115,
+    0.699999988079071,
+    0.479999989271164,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 16.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_kiefer_c": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.660000026226044,
+    0.479999989271164,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.860000014305115,
+    0.699999988079071,
+    0.479999989271164,
+    1.0
+   ],
+   "lack": 0.1,
+   "ringdichte": 5.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_kiefer_d": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.660000026226044,
+    0.479999989271164,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.860000014305115,
+    0.699999988079071,
+    0.479999989271164,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 12.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_kiefer_e": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.660000026226044,
+    0.479999989271164,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.860000014305115,
+    0.699999988079071,
+    0.479999989271164,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 14.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_kiefer_f": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.660000026226044,
+    0.479999989271164,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.860000014305115,
+    0.699999988079071,
+    0.479999989271164,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 10.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_kiefer_g": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.660000026226044,
+    0.479999989271164,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.860000014305115,
+    0.699999988079071,
+    0.479999989271164,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 7.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_kiefer_h": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.660000026226044,
+    0.479999989271164,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.860000014305115,
+    0.699999988079071,
+    0.479999989271164,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 8.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_nussbaum": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.280000001192093,
+    0.170000001788139,
+    0.0900000035762787,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.5,
+    0.330000013113022,
+    0.200000002980232,
+    1.0
+   ],
+   "lack": 0.1,
+   "ringdichte": 6.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "holz_nussbaum_b": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.280000001192093,
+    0.170000001788139,
+    0.0900000035762787,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.5,
+    0.330000013113022,
+    0.200000002980232,
+    1.0
+   ],
+   "lack": 0.0,
+   "ringdichte": 6.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "lack_436956": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.150000005960464,
+    0.270000010728836,
+    0.21000000834465,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.263999998569489,
+    0.411200016736984,
+    0.337599992752075,
+    1.0
+   ],
+   "lack": 0.5,
+   "ringdichte": 3.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "lack_cba13a": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.584999978542328,
+    0.450000017881393,
+    0.119999997317791,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.797599971294403,
+    0.632000029087067,
+    0.227200001478195,
+    1.0
+   ],
+   "lack": 0.35,
+   "ringdichte": 3.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "lack_dc382c": {
+  "art": "holz",
+  "shader": "res://shaders/holz.gdshader",
+  "u": {
+   "abnutzung": 0.2,
+   "dielen_breite": 0.0,
+   "farbe_dunkel": [
+    "c",
+    0.637500047683716,
+    0.112500004470348,
+    0.0750000029802322,
+    1.0
+   ],
+   "farbe_hell": [
+    "c",
+    0.862000048160553,
+    0.218000009655952,
+    0.171999990940094,
+    1.0
+   ],
+   "lack": 0.6,
+   "ringdichte": 3.0,
+   "uv_koordinaten": true,
+   "welt_koordinaten": false
+  }
+ },
+ "laub_db8024": {
+  "art": "laub",
+  "shader": "res://shaders/laub.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.860000014305115,
+    0.5,
+    0.140000000596046,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.600000023841858,
+    0.300000011920929,
+    0.0799999982118607,
+    1.0
+   ]
+  }
+ },
+ "laub_ebb233": {
+  "art": "laub",
+  "shader": "res://shaders/laub.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.920000016689301,
+    0.699999988079071,
+    0.200000002980232,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.620000004768372,
+    0.439999997615814,
+    0.119999997317791,
+    1.0
+   ]
+  }
+ },
+ "nuss_b88c59": {
+  "art": "nuss",
+  "shader": "res://shaders/nuss.gdshader",
+  "u": {
+   "art": 1,
+   "farbe": [
+    "c",
+    0.720000028610229,
+    0.550000011920929,
+    0.349999994039536,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.360000014305115,
+    0.239999994635582,
+    0.129999995231628,
+    1.0
+   ],
+   "faul": 0.0,
+   "gold": 0.0,
+   "instanzfarbe": false,
+   "radius": 0.046,
+   "saat": 4.06382411718369
+  }
+ },
+ "nuss_bd7838": {
+  "art": "nuss",
+  "shader": "res://shaders/nuss.gdshader",
+  "u": {
+   "art": 0,
+   "farbe": [
+    "c",
+    0.740000009536743,
+    0.469999998807907,
+    0.219999998807907,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.479999989271164,
+    0.280000001192093,
+    0.119999997317791,
+    1.0
+   ],
+   "faul": 0.0,
+   "gold": 0.0,
+   "instanzfarbe": false,
+   "radius": 0.034,
+   "saat": 4.78831827640533
+  }
+ },
+ "putz_1f1a17": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.119999997317791,
+    0.100000001490116,
+    0.0900000035762787,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.300000011920929,
+    0.280000001192093,
+    0.259999990463257,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 60.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_33261a": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.200000002980232,
+    0.150000005960464,
+    0.100000001490116,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.129999995231628,
+    0.100000001490116,
+    0.0700000002980232,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 40.0,
+   "rauheit": 0.92
+  }
+ },
+ "putz_335c80": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.200000002980232,
+    0.360000014305115,
+    0.5,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.170000001788139,
+    0.306000024080276,
+    0.425000011920929,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_40664d": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.25,
+    0.400000005960464,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.212500005960464,
+    0.340000003576279,
+    0.255000025033951,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_4c6b2e": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.3,
+    0.42,
+    0.18,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.22,
+    0.33,
+    0.13,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 90.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_4d3824": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.300000011920929,
+    0.219999998807907,
+    0.140000000596046,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.219999998807907,
+    0.159999996423721,
+    0.100000001490116,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 40.0,
+   "rauheit": 0.92
+  }
+ },
+ "putz_4d3826": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.300000011920929,
+    0.219999998807907,
+    0.150000005960464,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.200000002980232,
+    0.150000005960464,
+    0.100000001490116,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 30.0,
+   "rauheit": 0.92
+  }
+ },
+ "putz_4d3d2e": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.300000011920929,
+    0.239999994635582,
+    0.180000007152557,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.255000025033951,
+    0.203999996185303,
+    0.153000012040138,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_4d6629": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.300000011920929,
+    0.400000005960464,
+    0.159999996423721,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.200000002980232,
+    0.300000011920929,
+    0.119999997317791,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 60.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_5c4d42": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.360000014305115,
+    0.300000011920929,
+    0.259999990463257,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.259999990463257,
+    0.219999998807907,
+    0.200000002980232,
+    1.0
+   ],
+   "kacheln": 0.35,
+   "koernung": 30.0,
+   "rauheit": 0.9
+  }
+ },
+ "putz_733d21": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.449999988079071,
+    0.239999994635582,
+    0.129999995231628,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.300000011920929,
+    0.159999996423721,
+    0.100000001490116,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 50.0,
+   "rauheit": 0.9
+  }
+ },
+ "putz_735733": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.449999988079071,
+    0.340000003576279,
+    0.200000002980232,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.300000011920929,
+    0.219999998807907,
+    0.119999997317791,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 120.0,
+   "rauheit": 0.92
+  }
+ },
+ "putz_7a4526": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.479999989271164,
+    0.270000010728836,
+    0.150000005960464,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.319999992847443,
+    0.180000007152557,
+    0.109999999403954,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 55.0,
+   "rauheit": 0.9
+  }
+ },
+ "putz_80261f": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.5,
+    0.150000005960464,
+    0.119999997317791,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.425000011920929,
+    0.127500012516975,
+    0.101999998092651,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_8c1a1f": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.550000011920929,
+    0.100000001490116,
+    0.119999997317791,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.467500030994415,
+    0.0850000008940697,
+    0.101999998092651,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_8c4d38": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.550000011920929,
+    0.300000011920929,
+    0.219999998807907,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.449999988079071,
+    0.239999994635582,
+    0.180000007152557,
+    1.0
+   ],
+   "kacheln": 0.12,
+   "koernung": 20.0,
+   "rauheit": 0.9
+  }
+ },
+ "putz_999999": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "beule_staerke": 12.0,
+   "fugenfarbe": [
+    "c",
+    0.219999998807907,
+    0.140000000596046,
+    0.0799999982118607,
+    1.0
+   ],
+   "kiesel": 0.03,
+   "rauheit": 0.8
+  }
+ },
+ "putz_999999_b": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "beule_staerke": 12.0,
+   "fugenfarbe": [
+    "c",
+    0.219999998807907,
+    0.140000000596046,
+    0.0799999982118607,
+    1.0
+   ],
+   "kiesel": 0.05,
+   "rauheit": 0.8
+  }
+ },
+ "putz_999999_c": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "beule_staerke": 12.0,
+   "fugenfarbe": [
+    "c",
+    0.219999998807907,
+    0.140000000596046,
+    0.0799999982118607,
+    1.0
+   ],
+   "kiesel": 0.06,
+   "rauheit": 0.8
+  }
+ },
+ "putz_9e382e": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.620000004768372,
+    0.219999998807907,
+    0.180000007152557,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.52700001001358,
+    0.187000006437302,
+    0.153000012040138,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_b2332e": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.699999988079071,
+    0.200000002980232,
+    0.180000007152557,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.595000028610229,
+    0.170000001788139,
+    0.153000012040138,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_b24033": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.699999988079071,
+    0.25,
+    0.200000002980232,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.595000028610229,
+    0.212500005960464,
+    0.170000001788139,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_d1ad4d": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.819999992847443,
+    0.680000007152557,
+    0.300000011920929,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.639999985694885,
+    0.5,
+    0.200000002980232,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 90.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_d1b880": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.819999992847443,
+    0.720000028610229,
+    0.5,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.697000026702881,
+    0.612000048160553,
+    0.425000011920929,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_d1bd80": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.819999992847443,
+    0.740000009536743,
+    0.5,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.697000026702881,
+    0.629000008106232,
+    0.425000011920929,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "putz_d9ccad": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.850000023841858,
+    0.800000011920929,
+    0.680000007152557,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.722500026226044,
+    0.680000007152557,
+    0.578000009059906,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 220.0,
+   "rauheit": 1.0
+  }
+ },
+ "schindel_dachlatte": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.2790000021457674,
+    0.1079999975860119,
+    0.07199999839067446,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.22320000171661394,
+    0.08639999806880953,
+    0.05759999871253957,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 30.0,
+   "rauheit": 0.8
+  }
+ },
+ "schindel_dachziegel": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.620000004768372,
+    0.239999994635582,
+    0.159999996423721,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.5,
+    0.180000007152557,
+    0.119999997317791,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 30.0,
+   "rauheit": 0.8
+  }
+ },
+ "stein_feldstein": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.600000023841858,
+    0.569999992847443,
+    0.519999980926514,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.46000000834465,
+    0.439999997615814,
+    0.400000005960464,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 26.0,
+   "rauheit": 0.95
+  }
+ },
+ "stein_feldstein_b": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.6,
+    0.57,
+    0.52,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.46,
+    0.44,
+    0.4,
+    1.0
+   ],
+   "kacheln": 0.0,
+   "koernung": 26.0,
+   "rauheit": 0.95
+  }
+ },
+ "ziegel_dachziegel": {
+  "art": "putz",
+  "shader": "res://shaders/putz.gdshader",
+  "u": {
+   "farbe": [
+    "c",
+    0.620000004768372,
+    0.239999994635582,
+    0.159999996423721,
+    1.0
+   ],
+   "farbe2": [
+    "c",
+    0.5,
+    0.180000007152557,
+    0.119999997317791,
+    1.0
+   ],
+   "kacheln": 0.35,
+   "koernung": 30.0,
+   "rauheit": 0.8
+  }
+ }
+}

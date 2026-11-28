@@ -74,7 +74,7 @@ Abliefern geht von selbst: in den gelben Kreis am Trichter (oder an einem Außen
 - Freies Aufstellen und Verbinden von Maschinen (jetzt feste Plätze)
 - Kokosnuss, Pressen und Dampfhammer als späte Inhalte
 - Der blasse Boden unter dem Berg erholt sich noch nicht mit der Zeit
-- Eigene Blender-Modelle (Hütte, Maschinen und Nüsse sind noch aus Code gebaut)
+- Blender-Modelle für Hütte, Maschinen und Nüsse (die 27 Modellplätze im Tal sind in Blender gebaut, der Rest kommt noch aus Code)
 - Koop (der Code ist so angelegt, dass er später dazukommen kann)
 
 Wie die Welt aussehen soll (Karte, Orte, Geheimnisse, Etappen, Blender-Modellliste), steht im [Weltplan](https://claude.ai/artifact/7LfpnmDcRzZ3xFstdxxkPi).
@@ -114,7 +114,8 @@ Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4
 | `scripts/effekte.gd` | Partikel: Splitter, Staub, Funken, Münzen |
 | `shaders/` | Prozedurale Materialien (Holz, Putz, Nuss mit Rissen, Kern, Gras, Laub, Leuchtrand) |
 | `fonts/` | Schrift Fredoka (SIL Open Font License) |
-| `assets/blender/` | Hier kommen die Blender-Modelle hin (`<modellplatz>.glb`), siehe `LIESMICH.md` dort |
+| `assets/blender/` | Blender-Modelle der 27 Modellplätze (`<modellplatz>.glb`) und `materialien.json`, siehe `LIESMICH.md` dort |
+| `tools/blender/` | Blender-Skripte: Modellplätze bauen, Vorschau rendern, exportieren (siehe `LIESMICH.md` dort) |
 | `assets/` | Fertige 3D-Modelle (CC0): `wald/` KayKit Forest Nature, `natur/` Kenney Nature Kit, `kueche/` Kenney Food Kit, `rohstoffe/` KayKit Resource Bits |
 | `scripts/items/` | Nüsse und Teile (`item.gd`), Gefäße (`behaelter.gd`) |
 | `scripts/ui/` | HUD, Menüs, Stil |

@@ -12,13 +12,20 @@ uniform float dielen_laenge = 1.6;
 uniform float fuge = 0.012;
 uniform float lack = 0.0;              // 0 = matt, 1 = glänzend lackiert
 uniform bool welt_koordinaten = false;
+uniform bool uv_koordinaten = false;   // Blender-Modelle: Maserkoordinaten liegen in UV (längs, quer) und UV2 (quer, Zufall je Brett)
 uniform float beule_staerke = 1.0;
 uniform float abnutzung = 0.0;         // hellere, abgewetzte Stellen
 
 varying vec3 v_pos;
+varying float v_zufall;
 
 void vertex() {
 	v_pos = welt_koordinaten ? (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz : VERTEX;
+	v_zufall = 0.5;
+	if (uv_koordinaten) {
+		v_pos = vec3(UV.x, UV.y, UV2.x);
+		v_zufall = UV2.y;
+	}
 }
 
 void fragment() {
@@ -49,6 +56,7 @@ void fragment() {
 	float t = clamp(ringe * 0.55 + maser * 0.35 + flecken * 0.25 - 0.08, 0.0, 1.0);
 	vec3 farbe = mix(farbe_dunkel, farbe_hell, t);
 	farbe *= 0.86 + 0.28 * brett_zufall;
+	farbe *= 0.84 + 0.32 * v_zufall;
 	farbe = mix(farbe, farbe * 1.25, abnutzung * smoothstep(0.55, 0.8, flecken));
 	farbe *= mix(0.25, 1.0, fugen);
 	ALBEDO = farbe;

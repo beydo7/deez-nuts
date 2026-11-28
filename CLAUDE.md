@@ -8,6 +8,8 @@
 - Natur-Deko und Kleinkram kommen als fertige CC0-Modelle aus `assets/` (Kenney, KayKit; Lizenzen liegen dort), geladen über `scripts/modelle.gd`. Nur CC0-Pakete aufnehmen und im README unter „Fremde Inhalte“ nennen. Eigene Texturdateien nur, wenn es nicht anders geht.
 - Die Welt folgt dem Weltplan (Link in der README). Orte, Bach, Wege stehen in `scripts/welt_plan.gd`; nichts wird zufällig über die Karte gestreut.
 - Große Objekte bekommen einen Modellplatz: `Modelle.platz(eltern, "name", pos, drehung, ersatz)`. Blender-Modelle (`assets/blender/<name>.glb`) ersetzen den Ersatz aus `scripts/ersatz.gd` automatisch.
+- Die Blender-Modelle entstehen mit den Skripten in `tools/blender/` (Ablauf in der `LIESMICH.md` dort). Arbeitsdatei: `D:\Games\Deez Nuts\Blender\deez_nuts_modelle.blend`. Ändert sich ein Ersatzmodell, `ersatz.json` neu schreiben lassen und neu exportieren.
+- Blender-Materialien heißen `holz_…`, `putz_…`, `stein_…`; `assets/blender/materialien.json` ordnet ihnen die Godot-Shader zu, `Modelle.platz()` tauscht beim Laden.
 - Zustände der Welt (Funde, Opfergaben, Mondstaub) liegen in `Game.extra` und werden mitgespeichert. Tageszeit: `Game.tageszeit`, `Game.ist_nacht()`, `Game.ist_abend()`; Wetter: `Game.wetter`.
 - Wer ein Interaktiv in seiner eigenen Aktion entfernt: erst `collision_layer = 0`, dann verzögert `queue_free` (der Spieler zielt noch darauf).
 - Aufgenommene Geräusche (Kenney, CC0) liegen in `sounds/kenney/` und laufen über `Sfx.variante()`.
