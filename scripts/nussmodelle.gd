@@ -19,8 +19,9 @@ static func _noise() -> FastNoiseLite:
 static func ganz(id: String, variante := 0, detail := 1) -> ArrayMesh:
 	var k := "ganz|%s|%d|%d" % [id, variante, detail]
 	if not _cache.has(k):
-		var ringe: int = [7, 14, 22][detail]
-		var segmente: int = [10, 22, 34][detail]
+		# 3 = grob, für Nüsse in der Tiefe des Bergs und in der Ferne
+		var ringe: int = [7, 14, 22, 4][detail]
+		var segmente: int = [10, 22, 34, 7][detail]
 		var form := func(d: Vector3) -> Vector3: return _nuss_form(id, d, variante)
 		_cache[k] = _kugel(ringe, segmente, form, Data.NUESSE[id].groesse)
 	return _cache[k]

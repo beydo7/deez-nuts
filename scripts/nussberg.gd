@@ -3,7 +3,9 @@ extends Node3D
 ## Der Berg aus 1.000.000 Nüssen als begehbares Höhenfeld.
 ## Wo gesammelt wird, sinkt er ab, Nüsse rutschen in Löcher nach. Die Anzahl ist fest an
 ## Game.berg_rest() gekoppelt: ist das Volumen weg, ist auch der Zähler bei null.
-## Aus der Ferne zeigt ein Shader lauter Nüsse, in Spielernähe liegen echte 3D-Nüsse oben drauf.
+## Zu sehen sind immer echte Nüsse in zwei Lagen: Die untere Lage bedeckt den ganzen Berg, die
+## obere liegt in Spielernähe darüber. Darunter ist nur noch dunkler Grund wie Schatten zwischen
+## Nüssen. Wer oben Nüsse wegnimmt, sieht sofort andere von unten nachrücken.
 
 signal veraendert
 
@@ -14,8 +16,12 @@ const RADIUS := 22.0
 const HOEHE := 10.0
 const CHUNK := 16
 const MAX_STUFE := 0.36              # größter Höhenunterschied zwischen Nachbarn (sonst rutscht es)
-const DEKO_RADIUS := 7.5
-const DEKO_ABSTAND := 0.2
+const NAH_KACHEL := 2.0              # Kantenlänge einer Kachel der oberen Lage
+const NAH_ABSTAND := 2.0 / 11.0      # Abstand der Nüsse in der oberen Lage (11 je Kachelkante)
+const NAH_RADIUS := [5.5, 7.0, 8.5]  # je Qualitätsstufe: so weit liegt die obere Lage um den Spieler
+const FERN_KACHEL := 8.0             # Kantenlänge einer Kachel der unteren Lage
+const FERN_ABSTAND := [0.34, 0.3, 0.27]
+const RUECK_DAUER := 0.26            # so lange braucht eine Nuss zum Nachrücken
 
 var h := PackedFloat32Array()
 var volumen := 0.0                   # Restvolumen in m³ (Summe h * Zellfläche)
@@ -27,18 +33,27 @@ var _schmutzig := {}                 # Vector2i -> true
 var _kollision_schmutzig := false
 var _kollision_timer := 0.0
 var _bruch := 0.0                    # Nachkommastellen beim Zählen
-var _deko: Array = []                # [MultiMeshInstance3D, nuss]
-var _deko_mitte := Vector3(INF, 0, INF)
-var _deko_schmutzig := true
-var _deko_timer := 0.0
-var _fern: Array = []                # [MultiMeshInstance3D, PackedVector3Array basis-positionen]
+var _nah := {}                       # Kachel -> [MultiMeshInstance3D Walnuss, Haselnuss]
+var _nah_schmutzig := {}
+var _nah_mitte := Vector3(INF, 0, INF)
+var _fern := {}                      # Kachel -> [MultiMeshInstance3D, MultiMeshInstance3D]
+var _fern_schmutzig := {}
 var _fern_timer := 0.0
-var _fern_schmutzig := true
+var _generation := {}                # Zelle der oberen Lage -> wie oft dort schon eine Nuss genommen wurde
+var _rueckt := {}                    # Zelle -> [Startzeit, MultiMesh, Index, Ruhelage]
+var _zeit := 0.0
+var _netz_fein: Array = []
+var _netz_grob: Array = []
+var _nussmaterial: Array = []
 var _material: Material
 
 
 func _ready() -> void:
-	_material = Look.nusshaufen(0.2)
+	# Der Grund unter den Nüssen: fast schwarzbraun, damit Lücken wie Schatten in der Tiefe wirken
+	_material = Look.nusshaufen(0.2).duplicate()
+	_material.set_shader_parameter("fugenfarbe", Color(0.07, 0.04, 0.02))
+	_material.set_shader_parameter("kiesel_a", Color(0.3, 0.2, 0.11))
+	_material.set_shader_parameter("kiesel_b", Color(0.27, 0.15, 0.06))
 	koerper = StaticBody3D.new()
 	koerper.collision_layer = Data.L_WELT
 	koerper.collision_mask = 0
@@ -54,18 +69,10 @@ func _ready() -> void:
 	add_child(koerper)
 	if h.is_empty():
 		erzeugen()
-	for paar in [["wal", 1.0], ["hasel", 1.0]]:
-		var mmi := MultiMeshInstance3D.new()
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		mm.mesh = Nussmodelle.ganz(paar[0], 1, 0)
-		mmi.multimesh = mm
-		mmi.material_override = Look.nuss(paar[0], false, false, false, true)
-		mmi.layers = 2
-		add_child(mmi)
-		_deko.append([mmi, paar[0]])
-	_fern_anlegen()
+	for id in ["wal", "hasel"]:
+		_netz_fein.append(Nussmodelle.ganz(id, 1, 0))
+		_netz_grob.append(Nussmodelle.ganz(id, 0, 3))
+		_nussmaterial.append(Look.nuss(id, false, false, false, true))
 	alles_neu()
 
 
@@ -148,13 +155,20 @@ func alles_neu() -> void:
 			_schmutzig[Vector2i(cx, cz)] = true
 	_kollision_schmutzig = true
 	_kollision_timer = 0.0
-	_deko_schmutzig = true
-	_fern_schmutzig = true
 	_kollision_bauen()
 	while not _schmutzig.is_empty():
 		var k: Vector2i = _schmutzig.keys()[0]
 		_schmutzig.erase(k)
 		_chunk_bauen(k)
+	# untere Lage für den ganzen Berg sofort, obere Lage folgt dem Spieler
+	if not _netz_grob.is_empty():
+		var halb := N * ZELLE * 0.5
+		for kz in range(int(floor((MITTE.z - halb) / FERN_KACHEL)), int(floor((MITTE.z + halb) / FERN_KACHEL)) + 1):
+			for kx in range(int(floor((MITTE.x - halb) / FERN_KACHEL)), int(floor((MITTE.x + halb) / FERN_KACHEL)) + 1):
+				_fern_bauen(Vector2i(kx, kz))
+		_fern_schmutzig.clear()
+		for k in _nah:
+			_nah_schmutzig[k] = true
 
 
 func _volumen_neu() -> void:
@@ -285,6 +299,7 @@ func abbauen(punkt: Vector3, radius: float, anzahl: int) -> int:
 	n = min(n, rest)
 	_rutschen(x0 - 3, x1 + 3, z0 - 3, z1 + 3)
 	_markieren(x0 - 4, x1 + 4, z0 - 4, z1 + 4)
+	_nachruecken(punkt, radius, n)
 	if n > 0:
 		veraendert.emit()
 	return n
@@ -318,8 +333,16 @@ func _markieren(x0: int, x1: int, z0: int, z1: int) -> void:
 		for cx in range(max(0, x0 / CHUNK), min(N / CHUNK - 1, x1 / CHUNK) + 1):
 			_schmutzig[Vector2i(cx, cz)] = true
 	_kollision_schmutzig = true
-	_deko_schmutzig = true
-	_fern_schmutzig = true
+	# Kacheln beider Nusslagen über der Stelle neu setzen (die Nüsse sinken mit dem Berg)
+	var a := _welt(x0, z0)
+	var b := _welt(x1, z1)
+	for kz in range(int(floor(a.z / NAH_KACHEL)), int(floor(b.z / NAH_KACHEL)) + 1):
+		for kx in range(int(floor(a.x / NAH_KACHEL)), int(floor(b.x / NAH_KACHEL)) + 1):
+			if _nah.has(Vector2i(kx, kz)):
+				_nah_schmutzig[Vector2i(kx, kz)] = true
+	for kz in range(int(floor(a.z / FERN_KACHEL)), int(floor(b.z / FERN_KACHEL)) + 1):
+		for kx in range(int(floor(a.x / FERN_KACHEL)), int(floor(b.x / FERN_KACHEL)) + 1):
+			_fern_schmutzig[Vector2i(kx, kz)] = true
 
 
 # =============================================================================
@@ -335,17 +358,27 @@ func _process(delta: float) -> void:
 	_kollision_timer -= delta
 	if _kollision_schmutzig and _kollision_timer <= 0.0:
 		_kollision_bauen()
-	_deko_timer -= delta
+	_zeit += delta
 	var cam := get_viewport().get_camera_3d()
-	if cam and _deko_timer <= 0.0:
+	if cam:
 		var p := cam.global_position
-		if _deko_schmutzig or Vector2(p.x - _deko_mitte.x, p.z - _deko_mitte.z).length() > 1.5:
-			_deko_timer = 0.2
-			_deko_bauen(p)
+		if Vector2(p.x - _nah_mitte.x, p.z - _nah_mitte.z).length() > 1.0:
+			_nah_auswaehlen(p)
+	var fertig := 0
+	for k in _nah_schmutzig.keys():
+		_nah_schmutzig.erase(k)
+		if _nah.has(k):
+			_nah_bauen(k)
+			fertig += 1
+			if fertig >= 3:
+				break
 	_fern_timer -= delta
-	if _fern_schmutzig and _fern_timer <= 0.0:
-		_fern_timer = 2.0
-		_fern_aktualisieren()
+	if _fern_timer <= 0.0 and not _fern_schmutzig.is_empty():
+		_fern_timer = 0.1
+		var fk: Vector2i = _fern_schmutzig.keys()[0]
+		_fern_schmutzig.erase(fk)
+		_fern_bauen(fk)
+	_rueck_laufen()
 
 
 func _kollision_bauen() -> void:
@@ -382,7 +415,7 @@ func _chunk_bauen(k: Vector2i) -> void:
 		for x in range(x0, x0 + b):
 			var p := _welt(x, z)
 			var wert := h[z * (N + 1) + x]
-			p.y = wert - 0.06
+			p.y = wert - 0.15
 			pos.append(p)
 			var hl := h[z * (N + 1) + max(x - 1, 0)]
 			var hr := h[z * (N + 1) + min(x + 1, N)]
@@ -411,77 +444,191 @@ func _chunk_bauen(k: Vector2i) -> void:
 	mi.visible = true
 
 
-## Echte 3D-Nüsse in Spielernähe, damit der Berg aus der Nähe nach Nüssen aussieht.
-func _deko_bauen(mitte: Vector3) -> void:
-	_deko_schmutzig = false
-	_deko_mitte = mitte
-	var listen := [[], []]
-	var schritte := int(DEKO_RADIUS / DEKO_ABSTAND)
-	var gx := floorf(mitte.x / DEKO_ABSTAND)
-	var gz := floorf(mitte.z / DEKO_ABSTAND)
-	for iz in range(-schritte, schritte + 1):
-		for ix in range(-schritte, schritte + 1):
-			var zx := gx + ix
-			var zz := gz + iz
-			var hsh := hash(Vector2i(int(zx), int(zz)))
-			var jx := float(hsh & 255) / 255.0
-			var jz := float((hsh >> 8) & 255) / 255.0
-			var x := (zx + jx) * DEKO_ABSTAND
-			var z := (zz + jz) * DEKO_ABSTAND
-			if Vector2(x - mitte.x, z - mitte.z).length() > DEKO_RADIUS:
+# =============================================================================
+# Die Nüsse: untere Lage überall, obere Lage um den Spieler, Nachrücken
+# =============================================================================
+func _qualitaet() -> int:
+	return clampi(int(Game.einstellungen.get("qualitaet", 2)), 0, 2)
+
+
+func _mmi(netz: Mesh, material: Material, schatten: bool) -> MultiMeshInstance3D:
+	var mmi := MultiMeshInstance3D.new()
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = netz
+	mmi.multimesh = mm
+	mmi.material_override = material
+	mmi.layers = 2
+	if not schatten:
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+	return mmi
+
+
+func _fuelle(mmi: MultiMeshInstance3D, lagen: Array, farben: Array) -> void:
+	var mm := mmi.multimesh
+	mm.instance_count = lagen.size()
+	for j in lagen.size():
+		mm.set_instance_transform(j, lagen[j])
+		mm.set_instance_color(j, farben[j])
+	mmi.visible = not lagen.is_empty()
+
+
+## Welche Kacheln der oberen Lage es um den Spieler gibt.
+func _nah_auswaehlen(mitte: Vector3) -> void:
+	_nah_mitte = mitte
+	var radius: float = NAH_RADIUS[_qualitaet()]
+	var kx0 := int(floor((mitte.x - radius) / NAH_KACHEL))
+	var kz0 := int(floor((mitte.z - radius) / NAH_KACHEL))
+	var kx1 := int(floor((mitte.x + radius) / NAH_KACHEL))
+	var kz1 := int(floor((mitte.z + radius) / NAH_KACHEL))
+	for kz in range(kz0, kz1 + 1):
+		for kx in range(kx0, kx1 + 1):
+			var k := Vector2i(kx, kz)
+			var m := Vector2((kx + 0.5) * NAH_KACHEL, (kz + 0.5) * NAH_KACHEL)
+			if _nah.has(k) or m.distance_to(Vector2(mitte.x, mitte.z)) > radius + 1.0:
 				continue
+			if absf(m.x - MITTE.x) > RADIUS + 4.0 or absf(m.y - MITTE.z) > RADIUS + 4.0:
+				continue
+			_nah[k] = [null, null]
+			_nah_schmutzig[k] = true
+	for k in _nah.keys():
+		var m := Vector2((k.x + 0.5) * NAH_KACHEL, (k.y + 0.5) * NAH_KACHEL)
+		if m.distance_to(Vector2(mitte.x, mitte.z)) > radius + 3.0:
+			for mmi in _nah[k]:
+				if mmi:
+					mmi.queue_free()
+			_nah.erase(k)
+			_nah_schmutzig.erase(k)
+
+
+## Obere Lage einer Kachel: dicht, fein, hell. Jede Zelle hat ihre feste Nuss, bis dort eine genommen wird.
+func _nah_bauen(k: Vector2i) -> void:
+	var lagen := [[], []]
+	var farben := [[], []]
+	var zellen := [[], []]
+	var je := int(round(NAH_KACHEL / NAH_ABSTAND))
+	for iz in je:
+		for ix in je:
+			var zelle := Vector2i(k.x * je + ix, k.y * je + iz)
+			var hsh := hash(Vector3i(zelle.x, zelle.y, int(_generation.get(zelle, 0))))
+			var x := (zelle.x + float(hsh & 255) / 255.0) * NAH_ABSTAND
+			var z := (zelle.y + float((hsh >> 8) & 255) / 255.0) * NAH_ABSTAND
 			var y := hoehe_bei(x, z)
 			if y < 0.12:
 				continue
 			var art := (hsh >> 16) & 1
-			var dreh := Basis.from_euler(Vector3(float((hsh >> 4) & 63) * 0.1, float((hsh >> 10) & 63) * 0.1, 0.0))
+			var dreh := Basis.from_euler(Vector3(float((hsh >> 4) & 63) * 0.1, float((hsh >> 10) & 63) * 0.1, float((hsh >> 22) & 63) * 0.1))
 			var s := 1.6 + float((hsh >> 20) & 15) * 0.04
-			listen[art].append(Transform3D(dreh.scaled(Vector3.ONE * s), Vector3(x, y - 0.02, z)))
-	for i in 2:
-		var mm: MultiMesh = _deko[i][0].multimesh
-		var liste: Array = listen[i]
-		mm.instance_count = liste.size()
-		for j in liste.size():
-			mm.set_instance_transform(j, liste[j])
-			var hsh2 := j * 2654435761
-			var hell := 0.85 + float(hsh2 & 63) / 63.0 * 0.3
-			mm.set_instance_color(j, Color(hell, hell, hell))
+			var hell := 0.86 + float((hsh >> 26) & 31) / 31.0 * 0.3
+			lagen[art].append(Transform3D(dreh.scaled(Vector3.ONE * s), Vector3(x, y - 0.015, z)))
+			farben[art].append(Color(hell, hell, hell * 0.97))
+			zellen[art].append(zelle)
+	var paar: Array = _nah[k]
+	for art in 2:
+		if paar[art] == null:
+			if lagen[art].is_empty():
+				continue
+			paar[art] = _mmi(_netz_fein[art], _nussmaterial[art], true)
+		_fuelle(paar[art], lagen[art], farben[art])
+		# Nüsse, die gerade nachrücken, finden hier ihren neuen Platz in der Liste
+		for j in zellen[art].size():
+			var zelle: Vector2i = zellen[art][j]
+			if _rueckt.has(zelle):
+				_rueckt[zelle][1] = paar[art].multimesh
+				_rueckt[zelle][2] = j
+				_rueckt[zelle][3] = lagen[art][j]
 
 
-## Locker verteilte Nüsse auf dem ganzen Berg, damit er auch von weitem plastisch wirkt.
-func _fern_anlegen() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 4711
-	for paar in [["wal", 4500], ["hasel", 2500]]:
-		var basis := PackedVector3Array()
-		for i in paar[1]:
-			var w := rng.randf() * TAU
-			var r := sqrt(rng.randf()) * RADIUS * 1.05
-			basis.append(Vector3(MITTE.x + cos(w) * r, rng.randf() * TAU, MITTE.z + sin(w) * r))
-		var mmi := MultiMeshInstance3D.new()
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		mm.mesh = Nussmodelle.ganz(paar[0], 0, 0)
-		mm.instance_count = basis.size()
-		for i in basis.size():
-			var hell := rng.randf_range(0.85, 1.15)
-			mm.set_instance_color(i, Color(hell, hell, hell * 0.95))
-		mmi.multimesh = mm
-		mmi.material_override = Look.nuss(paar[0], false, false, false, true)
-		mmi.layers = 2
-		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(mmi)
-		_fern.append([mmi, basis])
+## Untere Lage einer Kachel: etwas größere, grobe, dunklere Nüsse knapp unter der Oberfläche.
+## Aus der Ferne ist sie der Berg, aus der Nähe füllt sie die Lücken der oberen Lage.
+func _fern_bauen(k: Vector2i) -> void:
+	var lagen := [[], []]
+	var farben := [[], []]
+	var abstand: float = FERN_ABSTAND[_qualitaet()]
+	var je := int(ceil(FERN_KACHEL / abstand))
+	var x0 := k.x * FERN_KACHEL
+	var z0 := k.y * FERN_KACHEL
+	for iz in je:
+		for ix in je:
+			var hsh := hash(Vector3i(k.x * 1000 + ix, k.y * 1000 + iz, 7919))
+			var x := x0 + (ix + float(hsh & 255) / 255.0) * abstand
+			var z := z0 + (iz + float((hsh >> 8) & 255) / 255.0) * abstand
+			if x >= x0 + FERN_KACHEL or z >= z0 + FERN_KACHEL:
+				continue
+			var y := hoehe_bei(x, z)
+			if y < 0.15:
+				continue
+			var art := (hsh >> 16) & 1
+			var dreh := Basis.from_euler(Vector3(float((hsh >> 4) & 63) * 0.1, float((hsh >> 10) & 63) * 0.1, 0.0))
+			var s := 2.25 + float((hsh >> 20) & 15) * 0.035
+			var hell := 0.62 + float((hsh >> 26) & 31) / 31.0 * 0.28
+			lagen[art].append(Transform3D(dreh.scaled(Vector3.ONE * s), Vector3(x, y - 0.085, z)))
+			farben[art].append(Color(hell, hell * 0.97, hell * 0.92))
+	if not _fern.has(k):
+		if lagen[0].is_empty() and lagen[1].is_empty():
+			return
+		_fern[k] = [_mmi(_netz_grob[0], _nussmaterial[0], false), _mmi(_netz_grob[1], _nussmaterial[1], false)]
+	for art in 2:
+		_fuelle(_fern[k][art], lagen[art], farben[art])
 
 
-func _fern_aktualisieren() -> void:
-	_fern_schmutzig = false
-	for paar in _fern:
-		var mm: MultiMesh = paar[0].multimesh
-		var basis: PackedVector3Array = paar[1]
-		for i in basis.size():
-			var b := basis[i]
-			var y := hoehe_bei(b.x, b.z)
-			var s := 2.6 if y > 0.15 else 0.0
-			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, b.y).rotated(Vector3.RIGHT, b.y * 2.0).scaled(Vector3.ONE * s), Vector3(b.x, y - 0.03, b.z)))
+## Oben wurden Nüsse genommen: An ihrer Stelle rücken andere von unten nach.
+func _nachruecken(punkt: Vector3, radius: float, anzahl: int) -> void:
+	if anzahl <= 0 or _nah.is_empty():
+		return
+	var r: float = max(radius, 0.3)
+	var kandidaten: Array = []
+	for cz in range(int(floor((punkt.z - r) / NAH_ABSTAND)), int(floor((punkt.z + r) / NAH_ABSTAND)) + 1):
+		for cx in range(int(floor((punkt.x - r) / NAH_ABSTAND)), int(floor((punkt.x + r) / NAH_ABSTAND)) + 1):
+			var m := Vector2((cx + 0.5) * NAH_ABSTAND, (cz + 0.5) * NAH_ABSTAND)
+			if m.distance_to(Vector2(punkt.x, punkt.z)) <= r and not _rueckt.has(Vector2i(cx, cz)):
+				kandidaten.append(Vector2i(cx, cz))
+	kandidaten.shuffle()
+	var je := int(round(NAH_KACHEL / NAH_ABSTAND))
+	for i in min(anzahl, kandidaten.size(), 28):
+		var zelle: Vector2i = kandidaten[i]
+		var k := Vector2i(int(floor(float(zelle.x) / je)), int(floor(float(zelle.y) / je)))
+		if not _nah.has(k):
+			continue
+		_generation[zelle] = int(_generation.get(zelle, 0)) + 1
+		_rueckt[zelle] = [_zeit + randf() * 0.09, null, -1, Transform3D.IDENTITY]
+		_nah_schmutzig[k] = true
+
+
+## Bewegt die nachrückenden Nüsse: Sie kommen klein von unten und setzen sich mit einem Ruck.
+func _rueck_laufen() -> void:
+	if _rueckt.is_empty():
+		return
+	for zelle in _rueckt.keys():
+		var a: Array = _rueckt[zelle]
+		if a[1] == null:
+			if _zeit - float(a[0]) > 1.0:
+				_rueckt.erase(zelle)     # Kachel gibt es nicht mehr
+			continue
+		var t := clampf((_zeit - float(a[0])) / RUECK_DAUER, 0.0, 1.0)
+		var ruhe: Transform3D = a[3]
+		if t >= 1.0:
+			a[1].set_instance_transform(a[2], ruhe)
+			_rueckt.erase(zelle)
+			continue
+		# weich heraus, am Ende ein kleiner Überschwinger
+		var e := 1.0 - pow(1.0 - t, 3.0)
+		var hoch := sin(t * PI) * 0.018
+		var jetzt := Transform3D(ruhe.basis.scaled(Vector3.ONE * lerpf(0.5, 1.0, e)), ruhe.origin + Vector3(0, -0.1 * (1.0 - e) + hoch, 0))
+		a[1].set_instance_transform(a[2], jetzt)
+
+
+## Wie viele Nüsse gerade zu sehen sind (für Tests und Messungen).
+func sichtbare_nuesse() -> Vector2i:
+	var oben := 0
+	var unten := 0
+	for k in _nah:
+		for mmi in _nah[k]:
+			if mmi:
+				oben += mmi.multimesh.instance_count
+	for k in _fern:
+		for mmi in _fern[k]:
+			unten += mmi.multimesh.instance_count
+	return Vector2i(oben, unten)

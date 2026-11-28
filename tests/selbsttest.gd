@@ -557,6 +557,32 @@ func _berg_und_sammeln() -> void:
 	var q := PhysicsRayQueryParameters3D.create(Vector3(1, 30, -32), Vector3(1, -5, -32), Data.L_WELT)
 	var t: Dictionary = welt.get_world_3d().direct_space_state.intersect_ray(q)
 	pruefe(not t.is_empty() and berg.ist_berg(t.collider), "Berg hat Kollision")
+	# Zwei Lagen echter Nüsse: unten der ganze Berg, oben um den Spieler; genommene rücken nach
+	var lagen: Vector2i = berg.sichtbare_nuesse()
+	pruefe(lagen.y > 8000, "Untere Lage bedeckt den ganzen Berg mit echten Nüssen (%d)" % lagen.y)
+	berg.set_process(false)       # sonst folgt die obere Lage sofort wieder der Kamera
+	berg._nah_auswaehlen(Vector3(1.0, 2.0, -13.0))
+	for k in berg._nah_schmutzig.keys():
+		berg._nah_bauen(k)
+	berg._nah_schmutzig.clear()
+	lagen = berg.sichtbare_nuesse()
+	pruefe(lagen.x > 1500, "Obere Lage liegt um den Spieler (%d Nüsse)" % lagen.x)
+	var zellen_vorher: int = berg._generation.size()
+	berg.abbauen(Vector3(1.0, 0, -13.0), 0.6, 6)
+	pruefe(berg._rueckt.size() >= 4 and berg._generation.size() >= zellen_vorher + 4, "Wo Nüsse genommen werden, rücken andere nach (%d)" % berg._rueckt.size())
+	for k in berg._nah_schmutzig.keys():
+		berg._nah_bauen(k)
+	berg._nah_schmutzig.clear()
+	berg._rueck_laufen()
+	var unterwegs := 0
+	for zelle in berg._rueckt:
+		if berg._rueckt[zelle][1] != null:
+			unterwegs += 1
+	pruefe(unterwegs >= 4, "Nachrückende Nüsse haben ihren Platz in der Kachel (%d)" % unterwegs)
+	berg._zeit += 1.0
+	berg._rueck_laufen()
+	pruefe(berg._rueckt.is_empty(), "Nachrücken ist nach einem Augenblick fertig")
+	berg.set_process(true)
 	# Abbauen hält Zähler und Volumen zusammen
 	var rest_vorher := Game.berg_rest()
 	var vol_vorher := berg.volumen
