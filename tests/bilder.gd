@@ -76,6 +76,23 @@ func _ready() -> void:
 		_zielen(s, blick[2])
 		await _warte(1.0)
 		await _foto(blick[0])
+	# Tageszeiten und Geheimnisse
+	for zeitblick in [
+			["01t_abend_hochsitz", 18.6, Vector2(43.6, -62.7), Vector3(1.0, 3.0, -32.0), 3.8],
+			["01u_nacht_huette", 23.0, Vector2(1.0, -9.5), Vector3(0.5, 1.6, -3.0), 0.0],
+			["01v_nacht_bach", 23.0, Vector2(-12.0, 37.5), Vector3(-30.0, 0.0, 10.0), 0.0],
+			["01w_morgen_bruecke", 6.8, Vector2(-20.0, 4.0), Vector3(-29.0, 0.6, 11.6), 0.0],
+			["01x_mondlichtung", 13.0, Vector2(-7.0, -83.5), Vector3(-8.0, 0.6, -95.0), 0.0],
+			["01y_koenigseiche", 13.0, Vector2(26.0, -66.0), Vector3(30.0, 4.0, -78.0), 0.0],
+			["01z_huehner", 11.0, Vector2(13.0, 14.5), Vector3(15.5, 0.3, 11.5), 0.0]]:
+		welt.himmel.setze_zeit(float(zeitblick[1]))
+		var zp: Vector2 = zeitblick[2]
+		s.global_position = Vector3(zp.x, g.hoehe_bei(zp.x, zp.y) + 0.1 + float(zeitblick[4]), zp.y)
+		await _warte(0.4)
+		_zielen(s, zeitblick[3])
+		await _warte(1.2)
+		await _foto(zeitblick[0])
+	welt.himmel.setze_zeit(10.5)
 	# 2: Am Berg mit dem Kochlöffel sammeln
 	Game.sammler["loeffel"] = 0
 	Game.waehle_sammler("loeffel")
@@ -200,6 +217,9 @@ func _ready() -> void:
 	welt.menues.zeige_talente()
 	await _warte(0.5)
 	await _foto("13_skillbaum")
+	welt.menues.zeige_fundbuch()
+	await _warte(0.5)
+	await _foto("13b_fundbuch")
 	welt.menues.zeige_intro()
 	await _warte(0.4)
 	await _foto("14_intro")
