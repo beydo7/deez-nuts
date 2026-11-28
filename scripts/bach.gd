@@ -213,6 +213,7 @@ func _klangquelle(pfad: String, pos: Vector3, db: float, weite: float) -> void:
 	a.unit_size = weite * 0.18
 	a.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
 	a.position = pos
+	a.bus = Sfx.BUS_DRAUSSEN
 	a.autoplay = true
 	a.finished.connect(a.play)
 	add_child(a)

@@ -14,6 +14,7 @@ uniform vec3 laub_a : source_color = vec3(0.50, 0.28, 0.10);
 uniform vec3 laub_b : source_color = vec3(0.66, 0.46, 0.16);
 uniform vec3 fels : source_color = vec3(0.45, 0.42, 0.38);
 uniform vec3 moos : source_color = vec3(0.26, 0.34, 0.13);
+uniform float nass = 0.0;   // 0 = trocken, 1 = Regen: Wege und Wiese glänzen
 
 varying vec3 v_welt;
 varying vec4 v_maske;
@@ -62,7 +63,10 @@ void fragment() {
 
 	c *= 0.86 + 0.28 * fein;
 	ALBEDO = c;
-	ROUGHNESS = mix(0.95, 0.55, ufer * 0.8);
-	SPECULAR = mix(0.4, 0.6, ufer);
+	float glanz = nass * (0.35 + 0.55 * weg) * (1.0 - hang);
+	c *= 1.0 - 0.22 * nass * (0.5 + 0.5 * weg);
+	ALBEDO = c;
+	ROUGHNESS = mix(mix(0.95, 0.55, ufer * 0.8), 0.18, glanz);
+	SPECULAR = mix(mix(0.4, 0.6, ufer), 0.7, glanz);
 	NORMAL = beule(VERTEX, NORMAL, fein * (0.01 + weg * 0.01 + hang * 0.03), 1.0);
 }

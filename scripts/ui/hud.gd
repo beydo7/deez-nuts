@@ -13,6 +13,7 @@ var _muenz_box: Control
 var _nebenwerte: Label
 var _combo: Label
 var _berg_label: Label
+var _uhr_label: Label
 var _berg_balken: ProgressBar
 var _berg_info: Label
 var _warnung: Label
@@ -120,6 +121,13 @@ func _berg_bauen() -> void:
 	_warnung = Stil.label("", 28, Stil.ROT)
 	_warnung.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mitte.add_child(_warnung)
+	# Uhrzeit, dezent rechts neben dem Bergbalken
+	_uhr_label = Stil.label("", 16, Stil.LEISE)
+	_uhr_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_uhr_label.offset_left = 246
+	_uhr_label.offset_top = 36
+	_uhr_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_wurzel.add_child(_uhr_label)
 	_toasts = VBoxContainer.new()
 	_toasts.add_theme_constant_override("separation", 6)
 	_toasts.alignment = BoxContainer.ALIGNMENT_BEGIN
@@ -296,6 +304,9 @@ func _process(delta: float) -> void:
 	# Berg
 	var s := Game.schicht()
 	_berg_label.text = "Nussberg  %s" % Data.zahl(Game.berg_rest())
+	var uhr_h := int(Game.tageszeit)
+	var uhr_m := int((Game.tageszeit - uhr_h) * 60.0)
+	_uhr_label.text = "%02d:%02d%s" % [uhr_h, uhr_m - uhr_m % 5, "  ·  Regen" if Game.wetter == "regen" else ""]
 	var naechste := Data.naechste_schicht(Game.genommen)
 	if naechste.is_empty():
 		_berg_balken.value = 100.0 * float(Game.genommen) / Data.BERG_GROESSE
