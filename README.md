@@ -33,7 +33,7 @@ Wer das Repo neu klont: Godot 4.7.2 (Standard-Version, nicht .NET) von https://g
 | Rechtsklick (mit etwas in der Hand) | werfen |
 | Q | fallen lassen |
 | B | Bestellbrett (Laden) |
-| Tab | Opas Notizbuch (Skillbaum) |
+| Tab | Opas Notizbuch (Skillbaum, darin der Knopf zum Fundbuch) |
 | Esc | Menü, Einstellungen, Speichern |
 | F9 / F10 / F11 | Testhilfen: +5.000 Münzen / +1.000 Nüsse ins Lager / +50.000 Münzen |
 
@@ -61,7 +61,10 @@ Abliefern geht von selbst: in den gelben Kreis am Trichter (oder an einem Außen
 - **Automatisieren:** Sammel-Eichhörnchen (beliebig viele, mit Halstuch), vier Außenposten mit Förderbändern zum Silo, Nussrutsche, Walzenknacker, Lagerhalle, Katze Mimi, Sieb, Glasdeckel, Rohrpost.
 - **Opas Notizbuch:** Skillbaum mit über 200 Knoten in sieben Pfaden (Sammeln, Tragen, Handel, Knacken, Maschinen, Helfer, Glück) und 21 Schlüssel-Talenten. Verschieben, zoomen, anklicken.
 - **Bestellungen** von Eisdiele, Bäckerei und Co., Meilensteine mit Münzen, geführter Einstieg mit 7 Zielen.
-- **Das Tal Haselgrund:** Gelände mit Hügeln, Bach und Wasserfall, Wald, Wege, zwei Brücken. Opas Anwesen mit Veranda, Garten, Gewächshaus, Brunnen, Hühnerstall, Holzlager, Feuerstelle, Hoftor und Briefkasten; in der Werkstatt Opas Fotos, sein Bauplan und eine Maschine unter einer Plane.
+- **Das Tal Haselgrund:** Gelände mit Hügeln, Bach und Wasserfall, Wald, Wege, zwei Brücken. Opas Anwesen mit Veranda, Garten, Gewächshaus, Brunnen, Hühnerstall, Holzlager, Feuerstelle, Hoftor und Briefkasten. Im Westen die verlassene Siedlung Alt-Haselgrund, Heuschober, Picknickplatz und Angelplatz, im Nordosten Opas Hochsitz mit Blick über Berg und Tal.
+- **Zwölf Geheimnisse im Fundbuch:** die Mondlichtung (Mondstaub wegfegen, Mondsiebmaschine, Goldene Zahnbürste), die goldene Nadel im Heuhaufen, der Eichhörnchen-König in der hohlen Eiche, dazu Opas Keller, ein Raum hinter dem Wasserfall, Flaschenpost, Hexenring, Sir Nussbert, zwölf Nussknacker-Figuren und mehr. Keine Leuchtmarker, Hinweise stehen in der Welt.
+- **Tag und Nacht, Wetter, Tiere:** ein Spieltag dauert 24 Minuten (in den Einstellungen anhaltbar), dazu Bewölkung und kurzer Regen, Vögel, Hühner, Enten, Schmetterlinge, Glühwürmchen, Rauch aus dem Schornstein und Klänge je nach Ort und Tageszeit.
+- **Ären zum Anfassen:** Im Berg liegen Funde, die beim Abtragen von selbst auftauchen (Opas erste Hütte, eine Dampfmaschine, sein Fahrrad). Rund um den Berg wächst der Betrieb mit jeder Ära: Arbeitslampen, Gerüst, Lagerzelte, Lichterketten, Hochsilo. Ganz unten wartet eine Luke mit Opas Brief.
 - **Optik:** prozedurale Shader für Holz, Putz, Nussschalen, Kerne und Gras, dazu Bäume, Büsche, Steine und Pilze aus freien Modell-Paketen (siehe unten). Warmes Herbstlicht.
 - **Ton:** knapp 40 erzeugte Geräusche plus aufgenommene Schritte und Aufpralle (Kenney), Musikschleife, Vogelgezwitscher.
 - **Speichern** automatisch alle 30 Sekunden und beim Beenden, der Berg samt Löchern wird mitgespeichert.
@@ -69,7 +72,8 @@ Abliefern geht von selbst: in den gelben Kreis am Trichter (oder an einem Außen
 ## Was noch fehlt (bewusst)
 
 - Freies Aufstellen und Verbinden von Maschinen (jetzt feste Plätze)
-- Ära 4 und 5 mit eigenen Räumen, Kokosnuss, Pressen, Dampfhammer, Eichhörnchen-König
+- Kokosnuss, Pressen und Dampfhammer als späte Inhalte
+- Der blasse Boden unter dem Berg erholt sich noch nicht mit der Zeit
 - Eigene Blender-Modelle (Hütte, Maschinen und Nüsse sind noch aus Code gebaut)
 - Koop (der Code ist so angelegt, dass er später dazukommen kann)
 
@@ -91,6 +95,10 @@ Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4
 | `scripts/wald.gd` | Waldgürtel, Baumgruppen, Unterholz, Uferbewuchs, Blumen |
 | `scripts/streuer.gd` | Stellt Modelle massenhaft als MultiMesh auf |
 | `scripts/ersatz.gd` | Ersatzmodelle aus Code für die Blender-Modellplätze |
+| `scripts/himmel.gd` | Tag-Nacht-Lauf, Wetter, Licht |
+| `scripts/tierwelt.gd` | Vögel, Hühner, Enten, Schmetterlinge, Glühwürmchen, Rauch |
+| `scripts/geheimnisse.gd` | Alle zwölf Geheimnisse samt Keller und Studio |
+| `scripts/aeren.gd` | Funde im Berg, Bauten je Ära, das letzte Geheimnis |
 | `scripts/nussberg.gd` | Der begehbare Nussberg: Höhenfeld, Abbauen, Nachrutschen, Speichern |
 | `scripts/sammelgeraet.gd` | Sammelwerkzeuge und Beutel in der Ego-Ansicht |
 | `scripts/helfer.gd` | Sammel-Eichhörnchen |
@@ -116,6 +124,8 @@ Das ganze Konzept steht im [Game-Design-Dokument](https://claude.ai/artifact/9C4
 Selbsttest ohne Fenster: `godot --headless --path . -- --selbsttest`
 
 Bildschirmfotos aller Situationen: `godot --path . -- --selbsttest --bilder=C:/irgendwo`
+
+Einzelne Blicke: zusätzlich `--blicke=name:x,z,zielx,ziely,zielz[,höhe];…`, davor wahlweise `--aera=4` (Bauten bis Ära 4) und `--graben=x,z,radius,anzahl;…` (Nüsse wegräumen). Jedes Bild meldet Draw Calls und Dreiecke.
 
 ## Fremde Inhalte
 
